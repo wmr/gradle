@@ -23,8 +23,8 @@ import org.gradle.gradlebuild.unittestandcompile.ModuleType
 configurations.all {
     artifacts.clear()
 }
-//tasks.remove(jar)
 
+def baseVersion = rootProject.buildVersion.baseVersion
 tasks.withType(AbstractArchiveTask).configureEach {
     archiveBaseName = "gradle"
     archiveVersion = baseVersion
@@ -72,8 +72,12 @@ configurations {
     }
 
     minimalRuntime {
+        visible = false
+        canBeResolved = false
         canBeConsumed = true
         attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+        attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+        attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
         attributes.attribute(Attribute.of("org.gradle.runtime", String), "minimal")
     }
 }
@@ -127,6 +131,15 @@ ext {
         }
         into('docs') {
             from configurations.gradleFullDocs
+            exclude "samples/**"
+        }
+    }
+
+    docsDistImage = copySpec {
+        from("$rootDir/LICENSE")
+        from('src/toplevel')
+        into('docs') {
+            from configurations.gradleFullDocs
         }
     }
 }
@@ -173,6 +186,17 @@ def srcZip = tasks.register("srcZip", Zip) {
             exclude '**/.gradle/'
         }
     }
+}
+
+def docsZip = tasks.register("docsZip", Zip) {
+    archiveClassifier.set('docs')
+    into(zipRootFolder) {
+        with docsDistImage
+    }
+}
+
+tasks.register("buildDists") {
+    dependsOn(allZip, binZip, srcZip, docsZip)
 }
 
 tasks.register("outputsZip", Zip) {

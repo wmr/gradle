@@ -20,6 +20,7 @@ import org.gradle.api.Namer;
 import org.gradle.api.internal.file.TemporaryFileProvider;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.internal.file.FileAccessTimeJournal;
+import org.gradle.internal.hash.ChecksumService;
 import org.gradle.internal.resource.local.GroupedAndNamedUniqueFileStore;
 
 import java.io.File;
@@ -41,14 +42,9 @@ public class ArtifactIdentifierFileStore extends GroupedAndNamedUniqueFileStore<
         }
     };
 
-    private static final Namer<ModuleComponentArtifactIdentifier> NAMER = new Namer<ModuleComponentArtifactIdentifier>() {
-        @Override
-        public String determineName(ModuleComponentArtifactIdentifier artifactId) {
-            return artifactId.getFileName();
-        }
-    };
+    private static final Namer<ModuleComponentArtifactIdentifier> NAMER = ModuleComponentArtifactIdentifier::getFileName;
 
-    public ArtifactIdentifierFileStore(File baseDir, TemporaryFileProvider temporaryFileProvider, FileAccessTimeJournal fileAccessTimeJournal) {
-        super(baseDir, temporaryFileProvider, fileAccessTimeJournal, GROUPER, NAMER);
+    public ArtifactIdentifierFileStore(File baseDir, TemporaryFileProvider temporaryFileProvider, FileAccessTimeJournal fileAccessTimeJournal, ChecksumService checksumService) {
+        super(baseDir, temporaryFileProvider, fileAccessTimeJournal, GROUPER, NAMER, checksumService);
     }
 }

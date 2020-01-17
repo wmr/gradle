@@ -69,7 +69,7 @@ class ModuleMetadataFileGeneratorTest extends Specification {
     def buildId = UniqueId.generate()
     def id = DefaultModuleVersionIdentifier.newId("group", "module", "1.2")
     def projectDependencyResolver = Mock(ProjectDependencyPublicationResolver)
-    def generator = new GradleModuleMetadataWriter(new BuildInvocationScopeId(buildId), projectDependencyResolver)
+    def generator = new GradleModuleMetadataWriter(new BuildInvocationScopeId(buildId), projectDependencyResolver, TestUtil.checksumService)
 
     def "fails to write file for component with no variants"() {
         def writer = new StringWriter()
@@ -628,9 +628,17 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         def comp2 = Stub(TestComponent)
         def publication2 = publication(comp2, id2)
 
+        def c1 = Stub(Capability) {
+            getGroup() >> 'org.test'
+            getName() >> 'foo'
+            getVersion() >> '1'
+        }
+
+
         def v1 = Stub(UsageContext)
         v1.name >> "v1"
         v1.attributes >> attributes(usage: "compile")
+        v1.capabilities >> [c1]
         def v2 = Stub(UsageContext)
         v2.name >> "v2"
         v2.attributes >> attributes(usage: "runtime")
@@ -669,7 +677,14 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         "group": "group",
         "module": "other-1",
         "version": "1"
-      }
+      },
+      "capabilities": [
+        {
+          "group": "org.test",
+          "name": "foo",
+          "version": "1"
+        }
+      ]
     },
     {
       "name": "v2",
@@ -830,6 +845,7 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         def apiDependency = Stub(ExternalDependency)
         apiDependency.group >> "com.acme"
         apiDependency.name >> "api"
+        apiDependency.versionConstraint >> requires("v1")
         apiDependency.transitive >> true
         apiDependency.excludeRules >> [new DefaultExcludeRule("com.example.bad", "api")]
         apiDependency.attributes >> ImmutableAttributes.EMPTY
@@ -837,6 +853,7 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         def runtimeDependency = Stub(ExternalDependency)
         runtimeDependency.group >> "com.acme"
         runtimeDependency.name >> "runtime"
+        runtimeDependency.versionConstraint >> DefaultImmutableVersionConstraint.of()
         runtimeDependency.transitive >> true
         runtimeDependency.excludeRules >> [new DefaultExcludeRule("com.example.bad", "runtime")]
         runtimeDependency.attributes >> ImmutableAttributes.EMPTY
@@ -844,6 +861,7 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         def intransitiveDependency = Stub(ExternalDependency)
         intransitiveDependency.group >> "com.acme"
         intransitiveDependency.name >> "intransitive"
+        intransitiveDependency.versionConstraint >> DefaultImmutableVersionConstraint.of()
         intransitiveDependency.transitive >> false
         intransitiveDependency.attributes >> ImmutableAttributes.EMPTY
 
@@ -872,6 +890,9 @@ class ModuleMetadataFileGeneratorTest extends Specification {
         {
           "group": "com.acme",
           "module": "api",
+          "version": {
+            "requires": "v1"
+          },
           "excludes": [
             {
               "group": "org.example.api",
@@ -917,6 +938,36 @@ class ModuleMetadataFileGeneratorTest extends Specification {
     }
   ]
 """
+    }
+
+    def "fail to write file for component without any version"() {
+        def writer = new StringWriter()
+        def component = Stub(TestComponent)
+        def publication = publication(component, id)
+
+        def apiDependency = Stub(ExternalDependency)
+        apiDependency.group >> "com.acme"
+        apiDependency.name >> "api"
+        apiDependency.versionConstraint >> DefaultImmutableVersionConstraint.of()
+        apiDependency.transitive >> true
+        apiDependency.excludeRules >> [new DefaultExcludeRule("com.example.bad", "api")]
+        apiDependency.attributes >> ImmutableAttributes.EMPTY
+
+        def v1 = Stub(UsageContext)
+        v1.name >> "v1"
+        v1.dependencies >> [apiDependency]
+
+        component.usages >> [v1]
+
+        when:
+        generator.generateTo(publication, [publication], writer)
+
+        and:
+        writer.toString()
+
+        then:
+        def failure = thrown(InvalidUserCodeException)
+        failure.message.contains("- Publication only contains dependencies and/or constraints without a version.")
     }
 
     def "write file for resolved dependencies"() {

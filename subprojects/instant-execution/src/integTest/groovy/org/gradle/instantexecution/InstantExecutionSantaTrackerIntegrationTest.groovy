@@ -16,12 +16,14 @@
 
 package org.gradle.instantexecution
 
+import org.gradle.test.fixtures.file.LeaksFileHandles
 import spock.lang.Unroll
 
 
 /**
  * Integration test Santa Tracker android app against AGP nightly.
  */
+@LeaksFileHandles("TODO: AGP (intentionally) does not get a ‘build finished’ event and so does not close some files")
 class InstantExecutionSantaTrackerIntegrationTest extends AbstractInstantExecutionAndroidIntegrationTest {
 
     def setup() {
@@ -32,54 +34,50 @@ class InstantExecutionSantaTrackerIntegrationTest extends AbstractInstantExecuti
     }
 
     @Unroll
-    def "assembleDebug --dry-run on Santa Tracker #flavor"() {
+    def "assembleDebug up-to-date on Santa Tracker #flavor (fromIde=#fromIde)"() {
 
         given:
         copyRemoteProject(remoteProject)
         withAgpNightly()
 
-
-
         when:
-        instantRun ':santa-tracker:assembleDebug', '--dry-run', '--no-build-cache'
+        instantRun("assembleDebug", "--no-build-cache", "-Pandroid.injected.invoked.from.ide=$fromIde")
 
         then:
-        instantRun ':santa-tracker:assembleDebug', '--dry-run', '--no-build-cache'
+        instantRun("assembleDebug", "--no-build-cache", "-Pandroid.injected.invoked.from.ide=$fromIde")
 
         where:
-        flavor | remoteProject
-        'Java' | "santaTrackerJava"
-        // 'Kotlin' | "santaTrackerKotlin" // TODO:instant-execution Instant execution state could not be cached.
+        flavor | remoteProject      | fromIde
+        'Java' | "santaTrackerJava" | false
+        'Java' | "santaTrackerJava" | true
+        // TODO:instant-execution Kotlin 1.3.70
+        // 'Kotlin' | "santaTrackerKotlin" | false
+        // 'Kotlin' | "santaTrackerKotlin" | true
     }
 
-    def "assembleDebug up-to-date on Santa Tracker Java"() {
+    @Unroll
+    def "clean assembleDebug on Santa Tracker #flavor (fromIde=#fromIde)"() {
+
         given:
-        copyRemoteProject("santaTrackerJava")
+        copyRemoteProject(remoteProject)
         withAgpNightly()
 
         when:
-        instantRun("assembleDebug", "--no-build-cache")
-
-        then:
-        instantRun("assembleDebug", "--no-build-cache")
-    }
-
-    def "supported tasks clean assembleDebug on Santa Tracker Java"() {
-
-        given:
-        copyRemoteProject("santaTrackerJava")
-        withAgpNightly()
-
-        when:
-        executer.expectDeprecationWarning() // Coming from Android plugin
-        instantRun("assembleDebug", "--no-build-cache")
+        instantRun("assembleDebug", "--no-build-cache", "-Pandroid.injected.invoked.from.ide=$fromIde")
 
         and:
-        executer.expectDeprecationWarning() // Coming from Android plugin
         run 'clean'
 
         then:
         // Instant execution avoid registering the listener inside Android plugin
-        instantRun("assembleDebug", "--no-build-cache")
+        instantRun("assembleDebug", "--no-build-cache", "-Pandroid.injected.invoked.from.ide=$fromIde")
+
+        where:
+        flavor | remoteProject      | fromIde
+        'Java' | "santaTrackerJava" | false
+        'Java' | "santaTrackerJava" | true
+        // TODO:instant-execution Kotlin 1.3.70
+        // 'Kotlin' | "santaTrackerKotlin" | false
+        // 'Kotlin' | "santaTrackerKotlin" | true
     }
 }

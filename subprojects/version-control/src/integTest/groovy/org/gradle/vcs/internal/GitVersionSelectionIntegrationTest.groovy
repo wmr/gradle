@@ -17,6 +17,7 @@
 package org.gradle.vcs.internal
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import org.gradle.integtests.fixtures.resolve.ResolveTestFixture
 import org.gradle.test.fixtures.file.TestFile
 import org.gradle.test.fixtures.server.http.BlockingHttpServer
@@ -69,6 +70,7 @@ class GitVersionSelectionIntegrationTest extends AbstractIntegrationSpec {
         fixture.prepare()
     }
 
+    @ToBeFixedForInstantExecution
     def "selects and builds from master for latest.integration selector"() {
         given:
         buildFile << """
@@ -127,6 +129,7 @@ class GitVersionSelectionIntegrationTest extends AbstractIntegrationSpec {
         result.assertTasksExecuted(":dep:jar_3.0", ":checkDeps")
     }
 
+    @ToBeFixedForInstantExecution
     def "selects and builds from tag for static selector"() {
         given:
         buildFile << """
@@ -169,6 +172,7 @@ class GitVersionSelectionIntegrationTest extends AbstractIntegrationSpec {
         result.assertTasksExecuted(":dep:jar_2.0", ":checkDeps")
     }
 
+    @ToBeFixedForInstantExecution
     def "reports on and recovers from missing version for static selector"() {
         given:
         buildFile << """
@@ -224,6 +228,7 @@ Required by:
     }
 
     @Unroll
+    @ToBeFixedForInstantExecution
     def "selects and builds from highest tag that matches #selector selector"() {
         given:
         buildFile << """
@@ -276,6 +281,7 @@ Required by:
     }
 
     @Unroll
+    @ToBeFixedForInstantExecution
     def "reports on and recovers from missing version for selector #selector"() {
         given:
         buildFile << """
@@ -362,10 +368,11 @@ Required by:
         "HEAD"    | _
     }
 
+    @ToBeFixedForInstantExecution
     def "selects and builds latest from branch for branch selector"() {
         given:
         buildFile << """
-            dependencies { 
+            dependencies {
                 compile('test:test') {
                     versionConstraint.branch = 'release'
                 }
@@ -385,7 +392,7 @@ Required by:
         then:
         fixture.expectGraph {
             root(":", "test:consumer:1.2") {
-                edge("test:test", "project :dep", "test:test:2.0") {
+                edge("test:test:{branch release}", "project :dep", "test:test:2.0") {
                 }
             }
         }
@@ -401,7 +408,7 @@ Required by:
         then:
         fixture.expectGraph {
             root(":", "test:consumer:1.2") {
-                edge("test:test", "project :dep", "test:test:3.0") {
+                edge("test:test:{branch release}", "project :dep", "test:test:3.0") {
                 }
             }
         }
@@ -414,17 +421,18 @@ Required by:
         then:
         fixture.expectGraph {
             root(":", "test:consumer:1.2") {
-                edge("test:test", "project :dep", "test:test:3.0") {
+                edge("test:test:{branch release}", "project :dep", "test:test:3.0") {
                 }
             }
         }
         result.assertTasksExecuted(":dep:jar_3.0", ":checkDeps")
     }
 
+    @ToBeFixedForInstantExecution
     def "reports on and recovers from missing branch"() {
         given:
         buildFile << """
-            dependencies { 
+            dependencies {
                 compile('test:test') {
                     versionConstraint.branch = 'release'
                 }
@@ -456,7 +464,7 @@ Required by:
         then:
         fixture.expectGraph {
             root(":", "test:consumer:1.2") {
-                edge("test:test", "project :dep", "test:test:2.0") {
+                edge("test:test:{branch release}", "project :dep", "test:test:2.0") {
                 }
             }
         }
@@ -469,7 +477,7 @@ Required by:
         then:
         fixture.expectGraph {
             root(":", "test:consumer:1.2") {
-                edge("test:test", "project :dep", "test:test:2.0") {
+                edge("test:test:{branch release}", "project :dep", "test:test:2.0") {
                 }
             }
         }

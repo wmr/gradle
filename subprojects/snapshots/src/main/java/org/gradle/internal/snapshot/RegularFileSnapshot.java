@@ -19,6 +19,7 @@ package org.gradle.internal.snapshot;
 import org.gradle.internal.file.FileType;
 import org.gradle.internal.hash.HashCode;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
 
 /**
@@ -46,6 +47,7 @@ public class RegularFileSnapshot extends AbstractCompleteFileSystemLocationSnaps
         return contentHash;
     }
 
+    // Used by the Maven caching client. Do not remove
     public FileMetadata getMetadata() {
         return metadata;
     }
@@ -65,7 +67,12 @@ public class RegularFileSnapshot extends AbstractCompleteFileSystemLocationSnaps
     }
 
     @Override
-    public Optional<FileSystemNode> invalidate(String absolutePath, int offset) {
+    public void accept(NodeVisitor visitor, @Nullable FileSystemNode parent) {
+        visitor.visitNode(this, parent);
+    }
+
+    @Override
+    public Optional<FileSystemNode> invalidate(VfsRelativePath relativePath, CaseSensitivity caseSensitivity) {
         return Optional.empty();
     }
 }

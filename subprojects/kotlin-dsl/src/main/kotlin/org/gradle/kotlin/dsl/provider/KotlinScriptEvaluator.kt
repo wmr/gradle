@@ -47,6 +47,7 @@ import org.gradle.internal.scripts.CompileScriptBuildOperationType.Result
 import org.gradle.kotlin.dsl.accessors.pluginSpecBuildersClassPath
 
 import org.gradle.kotlin.dsl.cache.ScriptCache
+import org.gradle.kotlin.dsl.execution.CompiledScript
 
 import org.gradle.kotlin.dsl.execution.EvalOption
 import org.gradle.kotlin.dsl.execution.EvalOptions
@@ -77,6 +78,10 @@ interface KotlinScriptEvaluator {
         options: EvalOptions
     )
 }
+
+
+internal
+const val scriptCacheKeyPrefix = "gradle-kotlin-dsl"
 
 
 internal
@@ -205,10 +210,10 @@ class StandardKotlinScriptEvaluator(
 
         override fun cachedClassFor(
             programId: ProgramId
-        ): Class<*>? = classloadingCache.get(programId)
+        ): CompiledScript? = classloadingCache.get(programId)
 
         override fun cache(
-            specializedProgram: Class<*>,
+            specializedProgram: CompiledScript,
             programId: ProgramId
         ) {
             classloadingCache.put(
@@ -227,7 +232,7 @@ class StandardKotlinScriptEvaluator(
         ): File = try {
 
             val baseCacheKey =
-                cacheKeyPrefix + templateId + sourceHash + parentClassLoader
+                cacheKeySpecPrefix + templateId + sourceHash + parentClassLoader
 
             val effectiveCacheKey =
                 accessorsClassPath?.let { baseCacheKey + it }
@@ -252,8 +257,8 @@ class StandardKotlinScriptEvaluator(
             )
 
         private
-        val cacheKeyPrefix =
-            CacheKeyBuilder.CacheKeySpec.withPrefix("gradle-kotlin-dsl")
+        val cacheKeySpecPrefix =
+            CacheKeyBuilder.CacheKeySpec.withPrefix(scriptCacheKeyPrefix)
 
         override fun compilationClassPathOf(classLoaderScope: ClassLoaderScope): ClassPath =
             classPathProvider.compilationClassPathOf(classLoaderScope)
@@ -264,16 +269,44 @@ class StandardKotlinScriptEvaluator(
             location: File,
             className: String,
             accessorsClassPath: ClassPath?
-        ): Class<*> =
-            classLoaderScope
-                .createChild(childScopeId)
-                .local(DefaultClassPath.of(location))
-                .apply { accessorsClassPath?.let(::local) }
-                .lock()
-                .localClassLoader
-                .loadClass(className)
+        ): CompiledScript =
+            ScopeBackedCompiledScript(classLoaderScope, childScopeId, location, className, accessorsClassPath)
 
         override val implicitImports: List<String>
             get() = this@StandardKotlinScriptEvaluator.implicitImports.list
+    }
+
+    private
+    class ScopeBackedCompiledScript(
+        private val classLoaderScope: ClassLoaderScope,
+        private val childScopeId: String,
+        private val location: File,
+        private val className: String,
+        private val accessorsClassPath: ClassPath?
+    ) : CompiledScript {
+        private
+        var loadedClass: Class<*>? = null
+        var scope: ClassLoaderScope? = null
+
+        override val programFor: Class<*>
+            get() {
+                if (loadedClass == null) {
+                    scope = prepareClassLoaderScope().also {
+                        loadedClass = it.localClassLoader.loadClass(className)
+                    }
+                }
+                return loadedClass!!
+            }
+
+        override fun onReuse() {
+            scope?.let {
+                // Recreate the script scope and ClassLoader, so that things that use scopes are notified that the scope exists
+                it.onReuse()
+                require(loadedClass!!.classLoader == it.localClassLoader)
+            }
+        }
+
+        private
+        fun prepareClassLoaderScope() = classLoaderScope.createLockedChild(childScopeId, DefaultClassPath.of(location).plus(accessorsClassPath ?: ClassPath.EMPTY), null, null)
     }
 }

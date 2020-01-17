@@ -100,7 +100,7 @@ class AbstractIntegrationSpec extends Specification {
         testDirectory.file(getDefaultBuildFileName())
     }
 
-    protected TestFile getBuildKotlinFile() {
+    TestFile getBuildKotlinFile() {
         testDirectory.file(getDefaultBuildKotlinFileName())
     }
 
@@ -417,6 +417,7 @@ class AbstractIntegrationSpec extends Specification {
 
     def createZip(String name, Closure cl) {
         TestFile zipRoot = file("${name}.root")
+        zipRoot.deleteDir()
         TestFile zip = file(name)
         zipRoot.create(cl)
         zipRoot.zipTo(zip)

@@ -18,7 +18,6 @@ package org.gradle.api.internal.artifacts.ivyservice.ivyresolve
 
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.internal.artifacts.ComponentMetadataProcessor
-import org.gradle.api.internal.artifacts.ImmutableModuleIdentifierFactory
 import org.gradle.api.internal.artifacts.configurations.dynamicversion.CachePolicy
 import org.gradle.api.internal.artifacts.ivyservice.modulecache.ModuleMetadataCache
 import org.gradle.api.internal.artifacts.ivyservice.modulecache.ModuleRepositoryCaches
@@ -37,7 +36,8 @@ import org.gradle.internal.component.model.ComponentArtifacts
 import org.gradle.internal.component.model.ComponentOverrideMetadata
 import org.gradle.internal.component.model.ComponentResolveMetadata
 import org.gradle.internal.component.model.ConfigurationMetadata
-import org.gradle.internal.component.model.ModuleSource
+import org.gradle.internal.component.model.ImmutableModuleSources
+import org.gradle.internal.hash.Hashing
 import org.gradle.internal.resolve.result.BuildableArtifactResolveResult
 import org.gradle.internal.resolve.result.DefaultBuildableArtifactSetResolveResult
 import org.gradle.internal.resolve.result.DefaultBuildableComponentArtifactsResolveResult
@@ -61,7 +61,6 @@ class CachingModuleComponentRepositoryTest extends Specification {
     def artifactAtRepositoryCache = Mock(ModuleArtifactCache)
     def cachePolicy = Stub(CachePolicy)
     def metadataProcessor = Stub(ComponentMetadataProcessor)
-    def moduleIdentifierFactory = Mock(ImmutableModuleIdentifierFactory)
     def caches = new ModuleRepositoryCaches(moduleResolutionCache, moduleDescriptorCache, moduleArtifactsCache, artifactAtRepositoryCache)
     def repo = new CachingModuleComponentRepository(realRepo, caches,
         cachePolicy, new BuildCommencedTimeProvider(), metadataProcessor)
@@ -80,15 +79,15 @@ class CachingModuleComponentRepositoryTest extends Specification {
             getFailure() >> null
         }
 
-        def descriptorHash = 1234G
-        def moduleSource = Stub(CachingModuleComponentRepository.CachingModuleSource) {
+        def descriptorHash = Hashing.sha1().hashString("Hello")
+        def moduleSource = Stub(ModuleDescriptorHashModuleSource) {
             getDescriptorHash() >> descriptorHash
         }
 
         ArtifactAtRepositoryKey atRepositoryKey = new ArtifactAtRepositoryKey("repo-id", artifactId)
 
         when:
-        repo.remoteAccess.resolveArtifact(artifact, moduleSource, result)
+        repo.remoteAccess.resolveArtifact(artifact, ImmutableModuleSources.of(moduleSource), result)
 
         then:
         1 * artifactAtRepositoryCache.store(atRepositoryKey, file, descriptorHash)
@@ -129,8 +128,6 @@ class CachingModuleComponentRepositoryTest extends Specification {
 
     def "does not use cache when artifacts for type can be determined locally"() {
         def component = Mock(ComponentResolveMetadata)
-        def source = Mock(ModuleSource)
-        def cachingSource = new CachingModuleComponentRepository.CachingModuleSource(BigInteger.ONE, false, source)
         def artifactType = ArtifactType.JAVADOC
         def result = new DefaultBuildableArtifactSetResolveResult()
 
@@ -138,8 +135,6 @@ class CachingModuleComponentRepositoryTest extends Specification {
         repo.localAccess.resolveArtifactsWithType(component, artifactType, result)
 
         then:
-        1 * component.getSource() >> cachingSource
-        1 * component.withSource(source) >> component
         realLocalAccess.resolveArtifactsWithType(component, artifactType, result) >> {
             result.resolved([Mock(ComponentArtifactMetadata)])
         }
@@ -149,16 +144,12 @@ class CachingModuleComponentRepositoryTest extends Specification {
     def "does not use cache when component artifacts can be determined locally"() {
         def component = Mock(ComponentResolveMetadata)
         def variant = Mock(ConfigurationMetadata)
-        def source = Mock(ModuleSource)
-        def cachingSource = new CachingModuleComponentRepository.CachingModuleSource(BigInteger.ONE, false, source)
         def result = new DefaultBuildableComponentArtifactsResolveResult()
 
         when:
         repo.localAccess.resolveArtifacts(component, variant, result)
 
         then:
-        1 * component.getSource() >> cachingSource
-        1 * component.withSource(source) >> component
         realLocalAccess.resolveArtifacts(component, variant, result) >> {
             result.resolved(Stub(ComponentArtifacts))
         }

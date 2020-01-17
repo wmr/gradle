@@ -27,7 +27,6 @@ import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.ProjectEvaluationListener;
 import org.gradle.api.UnknownDomainObjectException;
-import org.gradle.api.execution.SharedResourceContainer;
 import org.gradle.api.initialization.IncludedBuild;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.internal.GradleInternal;
@@ -42,6 +41,7 @@ import org.gradle.api.internal.project.AbstractPluginAware;
 import org.gradle.api.internal.project.CrossProjectConfigurator;
 import org.gradle.api.internal.project.ProjectInternal;
 import org.gradle.api.invocation.Gradle;
+import org.gradle.api.services.BuildServiceRegistry;
 import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.configuration.internal.ListenerBuildOperationDecorator;
 import org.gradle.execution.taskgraph.TaskExecutionGraphInternal;
@@ -50,6 +50,7 @@ import org.gradle.internal.InternalBuildAdapter;
 import org.gradle.internal.MutableActionSet;
 import org.gradle.internal.build.BuildState;
 import org.gradle.internal.build.PublicBuildPath;
+import org.gradle.internal.deprecation.DeprecationLogger;
 import org.gradle.internal.event.ListenerBroadcast;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.installation.CurrentGradleInstallation;
@@ -59,7 +60,6 @@ import org.gradle.internal.scan.config.BuildScanConfigInit;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.service.scopes.ServiceRegistryFactory;
 import org.gradle.listener.ClosureBackedMethodInvocationDispatch;
-import org.gradle.util.DeprecationLogger;
 import org.gradle.util.GradleVersion;
 import org.gradle.util.Path;
 
@@ -67,7 +67,7 @@ import javax.inject.Inject;
 import java.io.File;
 import java.util.Collection;
 
-public class DefaultGradle extends AbstractPluginAware implements GradleInternal {
+public abstract class DefaultGradle extends AbstractPluginAware implements GradleInternal {
     private SettingsInternal settings;
     private ProjectInternal rootProject;
     private ProjectInternal defaultProject;
@@ -83,7 +83,6 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
     private Path identityPath;
     private ClassLoaderScope classLoaderScope;
     private BuildType buildType = BuildType.NONE;
-    private SharedResourceContainer sharedResourceContainer;
     private ClassLoaderScope baseProjectClassLoaderScope;
 
     public DefaultGradle(GradleInternal parent, StartParameter startParameter, ServiceRegistryFactory parentRegistry) {
@@ -93,7 +92,6 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
         this.crossProjectConfigurator = services.get(CrossProjectConfigurator.class);
         buildListenerBroadcast = getListenerManager().createAnonymousBroadcaster(BuildListener.class);
         projectEvaluationListenerBroadcast = getListenerManager().createAnonymousBroadcaster(ProjectEvaluationListener.class);
-        sharedResourceContainer = services.get(SharedResourceContainer.class);
 
         buildListenerBroadcast.add(new InternalBuildAdapter() {
             @Override
@@ -302,13 +300,13 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
 
     @Override
     public void buildStarted(Closure closure) {
-        DeprecationLogger.nagUserOfDeprecated("Gradle#buildStarted(Closure)");
+        DeprecationLogger.deprecate("Gradle#buildStarted(Closure)").nagUser();
         buildListenerBroadcast.add(new ClosureBackedMethodInvocationDispatch("buildStarted", closure));
     }
 
     @Override
     public void buildStarted(Action<? super Gradle> action) {
-        DeprecationLogger.nagUserOfDeprecated("Gradle#buildStarted(Action)");
+        DeprecationLogger.deprecate("Gradle#buildStarted(Action)").nagUser();
         buildListenerBroadcast.add("buildStarted", action);
     }
 
@@ -403,7 +401,7 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
     private void nagBuildStartedDeprecationIfOverriden(Class<? extends BuildListener> buildListenerClass) {
         try {
             if (!ImmutableSet.of(BuildAdapter.class, InternalBuildAdapter.class).contains(buildListenerClass.getMethod("buildStarted", Gradle.class).getDeclaringClass())) {
-                DeprecationLogger.nagUserOfDeprecated("BuildListener#buildStarted(Gradle)");
+                DeprecationLogger.deprecate("BuildListener#buildStarted(Gradle)").nagUser();
             }
         } catch (NoSuchMethodException e) {
             assert false; // There's always a method named buildStarted
@@ -419,6 +417,9 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
     public Gradle getGradle() {
         return this;
     }
+
+    @Override @Inject
+    public abstract BuildServiceRegistry getSharedServices();
 
     @Override
     public Collection<IncludedBuild> getIncludedBuilds() {
@@ -537,13 +538,5 @@ public class DefaultGradle extends AbstractPluginAware implements GradleInternal
     @Override
     public void setBuildType(BuildType buildType) {
         this.buildType = buildType;
-    }
-
-    public SharedResourceContainer getSharedResources() {
-        return sharedResourceContainer;
-    }
-
-    public void sharedResources(Action<? super SharedResourceContainer> action) {
-        action.execute(sharedResourceContainer);
     }
 }

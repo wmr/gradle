@@ -22,14 +22,16 @@ import org.apache.tools.zip.ZipOutputStream
 import org.gradle.internal.IoActions
 import org.gradle.internal.hash.HashUtil
 import org.gradle.test.fixtures.file.TestFile
+import org.gradle.util.TextUtil
 
 abstract class AbstractModule implements Module {
     /**
      Last modified date for writeZipped to be able to create zipFiles with identical hashes
      */
-    private static Date lmd = new Date()
+    private static Date lmd = new Date(0)
 
     private boolean hasModuleMetadata
+    private Closure<?> onEveryFile
 
     Map<String, String> attributes = [:]
 
@@ -41,10 +43,12 @@ abstract class AbstractModule implements Module {
         def hashBefore = file.exists() ? getHash(file, "sha1") : null
         def tmpFile = file.parentFile.file("${file.name}.tmp")
 
-        if(isJarFile(file)) {
+        if (isJarFile(file)) {
             writeZipped(tmpFile, cl)
         } else {
             writeContents(tmpFile, cl)
+            // normalize line endings
+            tmpFile.setText(TextUtil.normaliseLineSeparators(tmpFile.getText("utf-8")), "utf-8")
         }
 
         def hashAfter = getHash(tmpFile, "sha1")
@@ -84,6 +88,15 @@ abstract class AbstractModule implements Module {
     }
 
     protected abstract onPublish(TestFile file)
+
+    protected void postPublish(TestFile file) {
+        if (onEveryFile) {
+            Closure cl = onEveryFile.clone()
+            cl.delegate = file
+            cl.resolveStrategy = Closure.DELEGATE_FIRST
+            cl(file)
+        }
+    }
 
     TestFile getSha1File(TestFile file) {
         getHashFile(file, "sha1")
@@ -139,5 +152,11 @@ abstract class AbstractModule implements Module {
 
     boolean isHasModuleMetadata() {
         hasModuleMetadata
+    }
+
+    @Override
+    Module withSignature(@DelegatesTo(value = File, strategy = Closure.DELEGATE_FIRST) Closure<?> signer) {
+        onEveryFile = signer
+        this
     }
 }

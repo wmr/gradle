@@ -17,6 +17,7 @@
 package org.gradle.api.tasks.bundling
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import org.gradle.integtests.fixtures.archives.TestReproducibleArchives
 import org.gradle.test.fixtures.archive.JarTestFixture
 import org.gradle.util.Requires
@@ -310,6 +311,7 @@ class JarIntegrationTest extends AbstractIntegrationSpec {
         confirmDuplicateServicesPreserved()
     }
 
+    @ToBeFixedForInstantExecution
     def "changes to manifest attributes should be honoured by incremental build"() {
         given:
         def jarWithManifest = { manifest ->
@@ -644,6 +646,7 @@ class JarIntegrationTest extends AbstractIntegrationSpec {
         "'UTF-8'"       | null            | "contentCharset must not be null"
     }
 
+    @ToBeFixedForInstantExecution
     def "JAR task is skipped when compiler output is unchanged"() {
         file("src/main/java/Main.java") << "public class Main {}\n"
         buildFile << """
@@ -680,9 +683,9 @@ class JarIntegrationTest extends AbstractIntegrationSpec {
         given:
         buildFile << """
             task jar(type: Jar) {
-                manifest { 
+                manifest {
                     attributes(attr: provider { "value" })
-                    attributes(version: archiveVersion) 
+                    attributes(version: archiveVersion)
                 }
                 destinationDirectory = buildDir
                 archiveFileName = 'test.jar'

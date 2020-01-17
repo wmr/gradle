@@ -25,7 +25,7 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gradle.enterprise").version("3.0")
+    id("com.gradle.enterprise").version("3.1")
 }
 
 fun execute(vararg command: String): String {
@@ -94,6 +94,7 @@ include("maven")
 include("codeQuality")
 include("antlr")
 include("toolingApi")
+include("buildEvents")
 include("toolingApiBuilders")
 include("docs")
 include("integTest")
@@ -141,6 +142,7 @@ include("compositeBuilds")
 include("workers")
 include("runtimeApiInfo")
 include("persistentCache")
+include("buildCacheBase")
 include("buildCache")
 include("coreApi")
 include("versionControl")
@@ -161,8 +163,9 @@ include("kotlinDslToolingBuilders")
 include("kotlinDslTestFixtures")
 include("kotlinDslIntegTests")
 include("workerProcesses")
-include("pineapple")
+include("baseAnnotations")
 include("samples")
+include("security")
 
 val upperCaseLetters = "\\p{Upper}".toRegex()
 

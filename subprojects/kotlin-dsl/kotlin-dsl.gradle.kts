@@ -111,7 +111,7 @@ dependencies {
 // --- Enable automatic generation of API extensions -------------------
 val apiExtensionsOutputDir = layout.buildDirectory.dir("generated-sources/kotlin")
 
-val publishedKotlinDslPluginVersion = "1.3.1" // TODO:kotlin-dsl
+val publishedKotlinDslPluginVersion = "1.3.3" // TODO:kotlin-dsl
 
 tasks {
 
@@ -157,13 +157,13 @@ dependencies {
 
 val writeEmbeddedKotlinDependencies by tasks.registering {
     val outputFile = layout.buildDirectory.file("embeddedKotlinDependencies/gradle-kotlin-dsl-embedded-kotlin.properties")
-    inputs.files(embeddedKotlinBaseDependencies)
     outputs.file(outputFile)
+    val values = embeddedKotlinBaseDependencies
+    inputs.files(values)
+    val skippedModules = setOf(project.name, "distributionsDependencies", "kotlinCompilerEmbeddable")
+
     doLast {
-
-        val skippedModules = setOf(project.name, "distributionsDependencies", "kotlinCompilerEmbeddable")
-
-        val modules = embeddedKotlinBaseDependencies.incoming.resolutionResult.allComponents
+        val modules = values.incoming.resolutionResult.allComponents
             .asSequence()
             .mapNotNull { it.moduleVersion }
             .filter { it.name !in skippedModules }

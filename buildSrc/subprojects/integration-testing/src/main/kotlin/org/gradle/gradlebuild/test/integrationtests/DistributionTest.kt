@@ -30,7 +30,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.options.Option
 import org.gradle.api.tasks.testing.Test
-import org.gradle.internal.os.OperatingSystem
+import org.gradle.gradlebuild.testing.integrationtests.cleanup.DaemonTracker
 import org.gradle.process.CommandLineArgumentProvider
 import java.util.concurrent.Callable
 
@@ -38,13 +38,7 @@ import java.util.concurrent.Callable
 /**
  * Base class for all tests that check the end-to-end behavior of a Gradle distribution.
  */
-open class DistributionTest : Test() {
-
-    @get:Input
-    val operatingSystem by lazy {
-        // the version currently differs between our dev infrastructure, so we only track the name and the architecture
-        "${OperatingSystem.current().name} ${System.getProperty("os.arch")}"
-    }
+abstract class DistributionTest : Test() {
 
     @Internal
     val binaryDistributions = BinaryDistributions(project.objects)
@@ -56,19 +50,27 @@ open class DistributionTest : Test() {
     val libsRepository = LibsRepositoryEnvironmentProvider(project.objects)
 
     @get:Internal
+    abstract val tracker: Property<DaemonTracker>
+
+    @get:Internal
     @get:Option(option = "rerun", description = "Always rerun the task")
     val rerun: Property<Boolean> = project.objects.property(Boolean::class.javaObjectType).convention(false)
 
     init {
-        dependsOn(Callable { if (binaryDistributions.distributionsRequired) listOf("all", "bin", "src").map { ":distributions:${it}Zip" } else null })
+        dependsOn(Callable { if (binaryDistributions.distributionsRequired) ":distributions:buildDists" else null })
         dependsOn(Callable { if (binaryDistributions.binZipRequired) ":distributions:binZip" else null })
-        dependsOn(Callable { if (libsRepository.required) ":toolingApi:publishLocalArchives" else null })
+        dependsOn(Callable { if (libsRepository.required) ":toolingApi:publishGradleDistributionPublicationToLocalRepository" else null })
         jvmArgumentProviders.add(gradleInstallationForTest)
         jvmArgumentProviders.add(BinaryDistributionsEnvironmentProvider(binaryDistributions))
         jvmArgumentProviders.add(libsRepository)
         outputs.upToDateWhen {
             !rerun.get()
         }
+    }
+
+    override fun executeTests() {
+        addTestListener(tracker.get().newDaemonListener())
+        super.executeTests()
     }
 }
 
@@ -85,6 +87,7 @@ class LibsRepositoryEnvironmentProvider(objects: ObjectFactory) : CommandLineArg
         if (required) mapOf("integTest.libsRepo" to absolutePathOf(dir)).asSystemPropertyJvmArguments()
         else emptyList()
 
+    @Internal
     override fun getName() =
         "libsRepository"
 }
@@ -105,7 +108,7 @@ class GradleInstallationForTestEnvironmentProvider(project: Project) : CommandLi
     val toolingApiShadedJarDir = project.objects.directoryProperty()
 
     @Internal
-    val gradleSamplesDir = project.objects.directoryProperty()
+    val gradleSnippetsDir = project.objects.directoryProperty()
 
     /**
      * The user home dir is not wiped out by clean.
@@ -115,18 +118,19 @@ class GradleInstallationForTestEnvironmentProvider(project: Project) : CommandLi
     val daemonRegistry = project.objects.directoryProperty()
 
     @get:Nested
-    val gradleDistribution = GradleDistribution(project, gradleHomeDir)
+    val gradleDistribution = GradleDistribution(gradleHomeDir)
 
     override fun asArguments() =
         mapOf(
             "integTest.gradleHomeDir" to absolutePathOf(gradleHomeDir),
-            "integTest.samplesdir" to absolutePathOf(gradleSamplesDir),
+            "integTest.samplesdir" to absolutePathOf(gradleSnippetsDir),
             "integTest.gradleUserHomeDir" to absolutePathOf(gradleUserHomeDir),
             "integTest.gradleGeneratedApiJarCacheDir" to absolutePathOf(gradleGeneratedApiJarCacheDir),
             "org.gradle.integtest.daemon.registry" to absolutePathOf(daemonRegistry),
             "integTest.toolingApiShadedJarDir" to absolutePathOf(toolingApiShadedJarDir)
         ).asSystemPropertyJvmArguments()
 
+    @Internal
     override fun getName() =
         "gradleInstallationForTest"
 }

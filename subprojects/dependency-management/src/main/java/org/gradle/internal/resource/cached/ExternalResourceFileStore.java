@@ -19,6 +19,7 @@ import org.apache.commons.lang.StringUtils;
 import org.gradle.api.Namer;
 import org.gradle.api.internal.file.TemporaryFileProvider;
 import org.gradle.internal.file.FileAccessTimeJournal;
+import org.gradle.internal.hash.ChecksumService;
 import org.gradle.internal.resource.local.GroupedAndNamedUniqueFileStore;
 
 import java.io.File;
@@ -40,14 +41,9 @@ public class ExternalResourceFileStore extends GroupedAndNamedUniqueFileStore<St
         }
     };
 
-    private static final Namer<String> NAMER = new Namer<String>() {
-        @Override
-        public String determineName(String s) {
-            return StringUtils.substringAfterLast(s, "/");
-        }
-    };
+    private static final Namer<String> NAMER = s -> StringUtils.substringAfterLast(s, "/");
 
-    public ExternalResourceFileStore(File baseDir, TemporaryFileProvider tmpProvider, FileAccessTimeJournal fileAccessTimeJournal) {
-        super(baseDir, tmpProvider, fileAccessTimeJournal, GROUPER, NAMER);
+    public ExternalResourceFileStore(File baseDir, TemporaryFileProvider tmpProvider, FileAccessTimeJournal fileAccessTimeJournal, ChecksumService checksumService) {
+        super(baseDir, tmpProvider, fileAccessTimeJournal, GROUPER, NAMER, checksumService);
     }
 }

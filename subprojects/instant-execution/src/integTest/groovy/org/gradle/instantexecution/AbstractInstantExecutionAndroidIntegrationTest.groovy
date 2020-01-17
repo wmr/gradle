@@ -18,10 +18,10 @@ package org.gradle.instantexecution
 
 import groovy.transform.CompileStatic
 import org.gradle.integtests.fixtures.android.AndroidHome
+import org.gradle.internal.scan.config.fixtures.GradleEnterprisePluginSettingsFixture
 import org.gradle.test.fixtures.file.TestFile
 
 import static org.gradle.integtests.fixtures.RepoScriptBlockUtil.kotlinEapRepositoryDefinition
-
 
 /**
  * Base Android / Instant execution integration test.
@@ -34,7 +34,7 @@ import static org.gradle.integtests.fixtures.RepoScriptBlockUtil.kotlinEapReposi
 @CompileStatic
 abstract class AbstractInstantExecutionAndroidIntegrationTest extends AbstractInstantExecutionIntegrationTest {
 
-    static final String AGP_VERSION = "4.0.0-20191103023549+0100"
+    static final String AGP_VERSION = "4.0.0-20191217200145+0100"
 
     static final String AGP_NIGHTLY_REPOSITORY_DECLARATION = '''
         maven {
@@ -82,6 +82,7 @@ abstract class AbstractInstantExecutionAndroidIntegrationTest extends AbstractIn
         executer.beforeExecute {
             withArgument("-I")
             withArgument(init.path)
+            withArgument("-Pandroid.overrideVersionCheck=true")
         }
 
         // Inject AGP nightly version
@@ -90,13 +91,6 @@ abstract class AbstractInstantExecutionAndroidIntegrationTest extends AbstractIn
 
     void copyRemoteProject(String remoteProject) {
         new TestFile(new File("build/$remoteProject")).copyTo(testDirectory)
-        updateScanPlugin()
-    }
-
-    private void updateScanPlugin() {
-        // Plugin is no longer compatible
-        buildFile.text -= 'apply plugin: "com.gradle.build-scan"'
-        buildFile.text -= "id 'com.gradle.build-scan' version '2.1' apply false"
-        settingsFile.text = "plugins { id 'com.gradle.enterprise' version '3.0' }\n\n" + settingsFile.text
+        GradleEnterprisePluginSettingsFixture.applyEnterprisePlugin(settingsFile)
     }
 }

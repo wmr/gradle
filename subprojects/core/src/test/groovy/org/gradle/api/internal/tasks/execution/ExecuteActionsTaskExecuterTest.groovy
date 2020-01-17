@@ -157,14 +157,15 @@ class ExecuteActionsTaskExecuterTest extends Specification {
         new CatchExceptionStep<>(
         new CancelExecutionStep<>(cancellationToken,
         new ResolveInputChangesStep<>(
-        new CleanupOutputsStep<>(deleter,
+        new CleanupOutputsStep<>(deleter, outputChangeListener,
         new ExecuteStep<>(
     )))))))))))))))
     // @formatter:on
 
     def executer = new ExecuteActionsTaskExecuter(
-        false,
-        false,
+        ExecuteActionsTaskExecuter.BuildCacheState.DISABLED,
+        ExecuteActionsTaskExecuter.ScanPluginState.NOT_APPLIED,
+        ExecuteActionsTaskExecuter.VfsInvalidationStrategy.COMPLETE,
         taskSnapshotter,
         executionHistoryStore,
         buildOperationExecutorForTaskExecution,

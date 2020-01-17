@@ -16,6 +16,7 @@
 package org.gradle.integtests.resolve
 
 import groovy.transform.NotYetImplemented
+import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.FluidDependenciesResolveRunner
 import org.gradle.integtests.fixtures.resolve.ResolveTestFixture
@@ -127,7 +128,7 @@ project(":b") {
         mavenRepo.module("org.other", "externalA", "1.2").publish()
 
         and:
-        file('settings.gradle') << """rootProject.name='test' 
+        file('settings.gradle') << """rootProject.name='test'
 include 'a', 'b'"""
 
         and:
@@ -616,7 +617,7 @@ project('c') {
         fails("impl:check")
 
         then:
-        failure.assertHasCause "Cannot change dependencies of configuration ':api:conf' after it has been included in dependency resolution"
+        failure.assertHasCause "Cannot change dependencies of dependency configuration ':api:conf' after it has been included in dependency resolution"
     }
 
     @Issue(["GRADLE-3330", "GRADLE-3362"])
@@ -669,4 +670,83 @@ project(':b') {
         executedAndNotSkipped ":a:A1jar", ":a:A2jar", ":a:A3jar"
     }
 
+    @Issue("https://github.com/gradle/gradle/issues/847")
+    def "projects with the same name should be considered different when building the graph"() {
+        given:
+        settingsFile << """
+            rootProject.name='duplicates'
+            include 'a:core'
+            include 'b:core'
+        """
+
+        buildFile << """
+            allprojects {
+                apply plugin: 'java-library'
+                group 'org.test'
+                version '1.0'
+            }
+
+            project(':a:core') {
+                dependencies {
+                    implementation project(':b:core')
+                }
+            }
+        """
+
+        def resolve = new ResolveTestFixture(buildFile, "compileClasspath")
+        resolve.prepare()
+
+        when:
+        succeeds 'a:core:checkDeps'
+
+        then:
+        resolve.expectGraph {
+            root(":a:core", "org.test:a-core:1.0") {
+                project(":b:core", "org.test:b-core:1.0") {
+                    variant("apiElements", [
+                        'org.gradle.category': 'library',
+                        'org.gradle.dependency.bundling': 'external',
+                        'org.gradle.jvm.version': JavaVersion.current().majorVersion,
+                        'org.gradle.usage': 'java-api',
+                        'org.gradle.libraryelements': 'jar'])
+                    artifact(name: 'main', noType: true)
+                }
+            }
+        }
+    }
+
+    @Issue("https://github.com/gradle/gradle/issues/847")
+    def "can opt-out detection of circular dependencies with projects of same name"() {
+        given:
+        settingsFile << """
+            rootProject.name='duplicates'
+            include 'a:core'
+            include 'b:core'
+        """
+
+        buildFile << """
+            allprojects {
+                apply plugin: 'java-library'
+                group 'org.test'
+                version '1.0'
+            }
+
+            project(':a:core') {
+                dependencies {
+                    implementation project(':b:core')
+                }
+            }
+        """
+
+        def resolve = new ResolveTestFixture(buildFile, "compileClasspath")
+        resolve.prepare()
+
+        when:
+        fails 'a:core:checkDeps', '-Dorg.gradle.dependency.duplicate.project.detection=false'
+
+        then:
+        failure.assertHasDescription """Circular dependency between the following tasks:
+:a:core:compileJava
+\\--- :a:core:compileJava (*)"""
+    }
 }

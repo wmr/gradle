@@ -8,7 +8,6 @@ import common.checkCleanM2
 import common.compileAllDependency
 import common.gradleWrapper
 import common.verifyTestFilesCleanup
-import jetbrains.buildServer.configs.kotlin.v2018_2.AbsoluteId
 import jetbrains.buildServer.configs.kotlin.v2018_2.BuildFeatures
 import jetbrains.buildServer.configs.kotlin.v2018_2.BuildStep
 import jetbrains.buildServer.configs.kotlin.v2018_2.BuildSteps
@@ -17,6 +16,7 @@ import jetbrains.buildServer.configs.kotlin.v2018_2.FailureAction
 import jetbrains.buildServer.configs.kotlin.v2018_2.ProjectFeatures
 import jetbrains.buildServer.configs.kotlin.v2018_2.buildFeatures.commitStatusPublisher
 import model.CIBuildModel
+import model.StageNames
 
 val killAllGradleProcesses = """
     free -m
@@ -155,7 +155,7 @@ fun applyDefaults(model: CIBuildModel, buildType: BaseGradleBuildType, gradleTas
     buildType.steps {
         extraSteps()
         checkCleanM2(os)
-        verifyTestFilesCleanup(daemon)
+        verifyTestFilesCleanup(daemon, os)
     }
 
     applyDefaultDependencies(model, buildType, notQuick)
@@ -176,7 +176,7 @@ fun applyTestDefaults(model: CIBuildModel, buildType: BaseGradleBuildType, gradl
     buildType.steps {
         extraSteps()
         checkCleanM2(os)
-        verifyTestFilesCleanup(daemon)
+        verifyTestFilesCleanup(daemon, os)
     }
 
     applyDefaultDependencies(model, buildType, notQuick)
@@ -189,7 +189,7 @@ fun applyDefaultDependencies(model: CIBuildModel, buildType: BuildType, notQuick
     if (notQuick) {
         // wait for quick feedback phase to finish successfully
         buildType.dependencies {
-            dependency(AbsoluteId("${model.projectPrefix}Stage_QuickFeedback_Trigger")) {
+            dependency(stageTriggerId(model, StageNames.QUICK_FEEDBACK_LINUX_ONLY)) {
                 snapshot {
                     onDependencyFailure = FailureAction.CANCEL
                     onDependencyCancel = FailureAction.CANCEL

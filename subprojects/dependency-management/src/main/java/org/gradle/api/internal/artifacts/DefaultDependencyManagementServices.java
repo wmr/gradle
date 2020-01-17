@@ -58,6 +58,7 @@ import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.ResolveIvyFactory
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.GradleModuleMetadataParser;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.GradlePomModuleDescriptorParser;
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionSelectorScheme;
+import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.verification.DependencyVerificationOverride;
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.LocalComponentMetadataBuilder;
 import org.gradle.api.internal.artifacts.ivyservice.moduleconverter.dependencies.LocalConfigurationMetadataBuilder;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.artifact.ResolvedArtifactSet;
@@ -154,6 +155,7 @@ import org.gradle.internal.fingerprint.FileCollectionFingerprinterRegistry;
 import org.gradle.internal.fingerprint.FileCollectionSnapshotter;
 import org.gradle.internal.fingerprint.impl.OutputFileCollectionFingerprinter;
 import org.gradle.internal.fingerprint.overlap.OverlappingOutputDetector;
+import org.gradle.internal.hash.ChecksumService;
 import org.gradle.internal.hash.ClassLoaderHierarchyHasher;
 import org.gradle.internal.id.UniqueId;
 import org.gradle.internal.instantiation.InstantiatorFactory;
@@ -273,7 +275,7 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                 new CatchExceptionStep<>(
                 new TimeoutStep<>(timeoutHandler,
                 new ResolveInputChangesStep<>(
-                new CleanupOutputsStep<>(deleter,
+                new CleanupOutputsStep<>(deleter, outputChangeListener,
                 new ExecuteStep<>(
             ))))))))))))))));
             // @formatter:on
@@ -400,7 +402,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
             ArtifactTransformActionScheme actionScheme,
             FileCollectionFingerprinterRegistry fileCollectionFingerprinterRegistry,
             FileCollectionFactory fileCollectionFactory,
-            FileLookup fileLookup
+            FileLookup fileLookup,
+            ServiceRegistry internalServices
         ) {
             return new DefaultTransformationRegistrationFactory(
                 buildOperationExecutor,
@@ -414,7 +417,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                 domainObjectContext,
                 projectStateRegistry,
                 parameterScheme,
-                actionScheme
+                actionScheme,
+                internalServices
             );
         }
 
@@ -446,7 +450,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                                                           ObjectFactory objectFactory,
                                                           CollectionCallbackActionDecorator callbackDecorator,
                                                           NamedObjectInstantiator instantiator,
-                                                          DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory) {
+                                                          DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory,
+                                                          ChecksumService checksumService) {
             return new DefaultBaseRepositoryFactory(
                 localMavenRepositoryLocator,
                 fileResolver,
@@ -467,7 +472,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                 isolatableFactory,
                 objectFactory,
                 callbackDecorator,
-                urlArtifactRepositoryFactory
+                urlArtifactRepositoryFactory,
+                checksumService
             );
         }
 
@@ -546,8 +552,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                 platformSupport);
         }
 
-        DependencyLockingHandler createDependencyLockingHandler(Instantiator instantiator, ConfigurationContainerInternal configurationContainer) {
-            return instantiator.newInstance(DefaultDependencyLockingHandler.class, configurationContainer);
+        DependencyLockingHandler createDependencyLockingHandler(Instantiator instantiator, ConfigurationContainerInternal configurationContainer, DependencyLockingProvider dependencyLockingProvider) {
+            return instantiator.newInstance(DefaultDependencyLockingHandler.class, configurationContainer, dependencyLockingProvider);
         }
 
         DependencyLockingProvider createDependencyLockingProvider(Instantiator instantiator, FileResolver fileResolver, StartParameter startParameter, DomainObjectContext context, GlobalDependencyResolutionRules globalDependencyResolutionRules) {
@@ -558,8 +564,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
             return instantiator.newInstance(DefaultDependencyConstraintHandler.class, configurationContainer, dependencyFactory, namedObjectInstantiator, platformSupport);
         }
 
-        DefaultComponentMetadataHandler createComponentMetadataHandler(Instantiator instantiator, ImmutableModuleIdentifierFactory moduleIdentifierFactory, SimpleMapInterner interner, ImmutableAttributesFactory attributesFactory, IsolatableFactory isolatableFactory, ComponentMetadataRuleExecutor componentMetadataRuleExecutor) {
-            DefaultComponentMetadataHandler componentMetadataHandler = instantiator.newInstance(DefaultComponentMetadataHandler.class, instantiator, moduleIdentifierFactory, interner, attributesFactory, isolatableFactory, componentMetadataRuleExecutor);
+        DefaultComponentMetadataHandler createComponentMetadataHandler(Instantiator instantiator, ImmutableModuleIdentifierFactory moduleIdentifierFactory, SimpleMapInterner interner, ImmutableAttributesFactory attributesFactory, IsolatableFactory isolatableFactory, ComponentMetadataRuleExecutor componentMetadataRuleExecutor, PlatformSupport platformSupport) {
+            DefaultComponentMetadataHandler componentMetadataHandler = instantiator.newInstance(DefaultComponentMetadataHandler.class, instantiator, moduleIdentifierFactory, interner, attributesFactory, isolatableFactory, componentMetadataRuleExecutor, platformSupport);
             if (domainObjectContext.isScript()) {
                 componentMetadataHandler.setVariantDerivationStrategy(new JavaEcosystemVariantDerivationStrategy());
             }
@@ -594,7 +600,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                                                        ComponentSelectorConverter componentSelectorConverter,
                                                        AttributeContainerSerializer attributeContainerSerializer,
                                                        BuildState currentBuild,
-                                                       TransformationNodeRegistry transformationNodeRegistry) {
+                                                       TransformationNodeRegistry transformationNodeRegistry,
+                                                       DependencyVerificationOverride dependencyVerificationOverride) {
             return new ErrorHandlingConfigurationResolver(
                     new ShortCircuitEmptyConfigurationResolver(
                         new DefaultConfigurationResolver(
@@ -619,7 +626,8 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                             componentSelectorConverter,
                             attributeContainerSerializer,
                             currentBuild.getBuildIdentifier(),
-                            new AttributeDesugaring(attributesFactory)),
+                            new AttributeDesugaring(attributesFactory),
+                            dependencyVerificationOverride),
                         componentIdentifierFactory,
                         moduleIdentifierFactory,
                         currentBuild.getBuildIdentifier()));

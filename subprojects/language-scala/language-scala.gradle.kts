@@ -2,7 +2,6 @@ import org.gradle.gradlebuild.unittestandcompile.ModuleType
 
 plugins {
     `java-library`
-    gradlebuild.`strict-compile`
 }
 
 dependencies {
@@ -31,7 +30,6 @@ dependencies {
     testImplementation(project(":files"))
     testImplementation(testFixtures(project(":core")))
     testImplementation(testFixtures(project(":platformBase")))
-    testImplementation(testFixtures(project(":launcher")))
     testImplementation(testFixtures(project(":plugins")))
 
     testRuntimeOnly(project(":runtimeApiInfo"))

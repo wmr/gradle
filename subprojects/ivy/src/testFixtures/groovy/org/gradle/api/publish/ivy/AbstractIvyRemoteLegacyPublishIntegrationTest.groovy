@@ -18,6 +18,7 @@
 package org.gradle.api.publish.ivy
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import org.gradle.integtests.fixtures.executer.ProgressLoggingFixture
 import org.gradle.test.fixtures.ivy.IvyDescriptorDependencyExclusion
 import org.gradle.test.fixtures.ivy.RemoteIvyModule
@@ -42,6 +43,10 @@ abstract class AbstractIvyRemoteLegacyPublishIntegrationTest extends AbstractInt
     }
 
     @Issue("GRADLE-3440")
+    @ToBeFixedForInstantExecution(
+        skip = ToBeFixedForInstantExecution.Skip.FAILS_TO_CLEANUP,
+        because = "IvyGcsUploadArchivesIntegrationTest leaks test files"
+    )
     void "can publish using uploadArchives"() {
         // We expect 'The compile/runtime configuration has been deprecated for removal.' for using this legacy mechanism in the traditional way.
         executer.expectDeprecationWarning("The compile configuration has been deprecated for dependency declaration. This will fail with an error in Gradle 7.0. Please use the implementation configuration instead.")
@@ -133,6 +138,10 @@ uploadArchives {
         progressLogger.uploadProgressLogged(module.ivy.uri)
     }
 
+    @ToBeFixedForInstantExecution(
+        skip = ToBeFixedForInstantExecution.Skip.FAILS_TO_CLEANUP,
+        because = "IvyGcsUploadArchivesIntegrationTest leaks test files"
+    )
     void "does not upload meta-data file when artifact upload fails"() {
         given:
         settingsFile << 'rootProject.name = "publish"'

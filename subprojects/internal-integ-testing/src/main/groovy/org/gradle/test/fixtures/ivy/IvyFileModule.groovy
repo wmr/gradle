@@ -55,6 +55,7 @@ class IvyFileModule extends AbstractModule implements IvyModule {
     String status = "integration"
     MetadataPublish metadataPublish = MetadataPublish.ALL
     boolean writeGradleMetadataRedirection = false
+    private boolean withExtraChecksums = true
 
     int publishCount = 1
     XmlTransformer transformer = new XmlTransformer()
@@ -246,6 +247,18 @@ class IvyFileModule extends AbstractModule implements IvyModule {
         return this
     }
 
+    @Override
+    IvyModule withoutExtraChecksums() {
+        withExtraChecksums = false
+        this
+    }
+
+    @Override
+    IvyModule withExtraChecksums() {
+        withExtraChecksums = true
+        this
+    }
+
     IvyFileModule nonTransitive(String config) {
         configurations[config].transitive = false
         return this
@@ -428,7 +441,7 @@ class IvyFileModule extends AbstractModule implements IvyModule {
                     v.attributes,
                     v.dependencies + dependencies.collect { d ->
                         new DependencySpec(d.organisation, d.module, d.revision, d.prefers, d.strictly,d.rejects, d.exclusions, d.endorseStrictVersions, d.reason, d.attributes,
-                            d.classifier ? new ArtifactSelectorSpec(d.module, 'jar', 'jar', d.classifier) : null)
+                            d.classifier ? new ArtifactSelectorSpec(d.module, 'jar', 'jar', d.classifier) : null, d.requireCapability)
                     },
                     v.dependencyConstraints + dependencyConstraints.collect { d ->
                         new DependencyConstraintSpec(d.organisation, d.module, d.revision, d.prefers, d.strictly, d.rejects, d.reason, d.attributes)
@@ -568,6 +581,7 @@ class IvyFileModule extends AbstractModule implements IvyModule {
     @Override
     protected onPublish(TestFile file) {
         sha1File(file)
+        postPublish(file)
     }
 
     private String getArtifactContent() {
@@ -581,7 +595,10 @@ class IvyFileModule extends AbstractModule implements IvyModule {
     void assertArtifactsPublished(String... names) {
         def expectedArtifacts = [] as Set
         for (name in names) {
-            expectedArtifacts.addAll([name, "${name}.sha1", "${name}.sha256", "${name}.sha512"])
+            expectedArtifacts.addAll([name, "${name}.sha1"])
+            if (withExtraChecksums) {
+                expectedArtifacts.addAll(["${name}.sha256", "${name}.sha512"])
+            }
         }
 
         List<String> publishedArtifacts = moduleDir.list().sort()

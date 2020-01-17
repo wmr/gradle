@@ -128,7 +128,7 @@ public class DefaultCapabilitiesConflictHandler implements CapabilitiesConflictH
                 if (details.reason != null) {
                     conflictResolution = conflictResolution.withDescription(details.reason);
                 }
-                details.getSelected().getComponent().addCause(conflictResolution);
+                details.getSelected().addCause(conflictResolution);
                 return;
             }
         }
@@ -137,6 +137,11 @@ public class DefaultCapabilitiesConflictHandler implements CapabilitiesConflictH
     @Override
     public void registerResolver(Resolver conflictResolver) {
         resolvers.add(conflictResolver);
+    }
+
+    @Override
+    public boolean hasSeenCapability(Capability capability) {
+        return capabilityWithoutVersionToNodes.containsKey(((CapabilityInternal) capability).getCapabilityId());
     }
 
     public static CapabilitiesConflictHandler.Candidate candidate(NodeState node, Capability capability, Collection<NodeState> implicitCapabilityProviders) {
@@ -259,8 +264,8 @@ public class DefaultCapabilitiesConflictHandler implements CapabilitiesConflictH
         }
 
         @Override
-        public NodeState getSelected() {
-            return selected;
+        public ComponentState getSelected() {
+            return selected.getComponent();
         }
     }
 

@@ -6,8 +6,6 @@ plugins {
 }
 
 dependencies {
-    api(library("jsr305"))
-
     implementation(project(":baseServices"))
     implementation(project(":logging"))
     implementation(project(":processServices"))
@@ -32,7 +30,6 @@ dependencies {
 
     testImplementation(project(":baseServicesGroovy"))
     testImplementation(testFixtures(project(":core")))
-    testImplementation(testFixtures(project(":launcher")))
 
     testRuntimeOnly(project(":runtimeApiInfo"))
 

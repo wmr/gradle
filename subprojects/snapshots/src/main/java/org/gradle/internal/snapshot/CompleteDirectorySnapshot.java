@@ -16,10 +16,12 @@
 
 package org.gradle.internal.snapshot;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import org.gradle.internal.file.FileType;
 import org.gradle.internal.hash.HashCode;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -65,21 +67,30 @@ public class CompleteDirectorySnapshot extends AbstractCompleteFileSystemLocatio
         visitor.postVisitDirectory(this);
     }
 
+    @Override
+    public void accept(NodeVisitor visitor, @Nullable FileSystemNode parent) {
+        visitor.visitNode(this, parent);
+        for (CompleteFileSystemLocationSnapshot child : children) {
+            child.accept(visitor, this);
+        }
+    }
+
+    @VisibleForTesting
     public List<CompleteFileSystemLocationSnapshot> getChildren() {
         return children;
     }
 
     @Override
-    protected Optional<MetadataSnapshot> getChildSnapshot(String absolutePath, int offset) {
+    protected Optional<MetadataSnapshot> getChildSnapshot(VfsRelativePath relativePath, CaseSensitivity caseSensitivity) {
         return Optional.of(
-            SnapshotUtil.getMetadataFromChildren(children, absolutePath, offset, Optional::empty)
-                .orElseGet(() -> SnapshotUtil.missingSnapshotForAbsolutePath(absolutePath))
+            SnapshotUtil.getMetadataFromChildren(children, relativePath, caseSensitivity, Optional::empty)
+                .orElseGet(() -> missingSnapshotForAbsolutePath(relativePath.getAbsolutePath()))
         );
     }
 
     @Override
-    public Optional<FileSystemNode> invalidate(String absolutePath, int offset) {
-        return SnapshotUtil.handleChildren(children, absolutePath, offset, new SnapshotUtil.ChildHandler<Optional<FileSystemNode>>() {
+    public Optional<FileSystemNode> invalidate(VfsRelativePath relativePath, CaseSensitivity caseSensitivity) {
+        return SnapshotUtil.handleChildren(children, relativePath, caseSensitivity, new SnapshotUtil.ChildHandler<Optional<FileSystemNode>>() {
             @Override
             public Optional<FileSystemNode> handleNewChild(int insertBefore) {
                 return Optional.of(new PartialDirectorySnapshot(getPathToParent(), children));
@@ -88,10 +99,10 @@ public class CompleteDirectorySnapshot extends AbstractCompleteFileSystemLocatio
             @Override
             public Optional<FileSystemNode> handleChildOfExisting(int childIndex) {
                 CompleteFileSystemLocationSnapshot foundChild = children.get(childIndex);
-                int indexForSubSegment = foundChild.getPathToParent().length();
-                Optional<FileSystemNode> invalidated = indexForSubSegment == absolutePath.length() - offset
+                int childPathLength = foundChild.getPathToParent().length();
+                Optional<FileSystemNode> invalidated = childPathLength == relativePath.length()
                     ? Optional.empty()
-                    : foundChild.invalidate(absolutePath, offset + indexForSubSegment + 1);
+                    : foundChild.invalidate(relativePath.suffixStartingFrom(childPathLength + 1), caseSensitivity);
                 return Optional.of(new PartialDirectorySnapshot(getPathToParent(), getChildren(childIndex, invalidated)));
             }
 

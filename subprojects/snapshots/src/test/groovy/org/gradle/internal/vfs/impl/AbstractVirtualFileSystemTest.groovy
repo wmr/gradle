@@ -34,10 +34,10 @@ import org.gradle.test.fixtures.file.TestNameTestDirectoryProvider
 import org.junit.Rule
 import spock.lang.Specification
 
-import javax.annotation.Nullable
 import java.nio.file.Path
-import java.nio.file.attribute.BasicFileAttributes
 import java.util.function.Predicate
+
+import static org.gradle.internal.snapshot.CaseSensitivity.CASE_SENSITIVE
 
 @CleanupTestDirectory
 abstract class AbstractVirtualFileSystemTest extends Specification {
@@ -46,7 +46,7 @@ abstract class AbstractVirtualFileSystemTest extends Specification {
 
     def fileHasher = new AllowingHasher(TestFiles.fileHasher())
     def stat = new AllowingStat(TestFiles.fileSystem())
-    def vfs = new DefaultVirtualFileSystem(fileHasher, new StringInterner(), stat)
+    def vfs = new DefaultVirtualFileSystem(fileHasher, new StringInterner(), stat, CASE_SENSITIVE)
 
     void allowFileSystemAccess(boolean allow) {
         fileHasher.allowHashing(allow)
@@ -177,7 +177,7 @@ abstract class AbstractVirtualFileSystemTest extends Specification {
         DirectoryWalkerPredicate getAsDirectoryWalkerPredicate() {
             return new DirectoryWalkerPredicate() {
                 @Override
-                boolean test(Path path, String name, boolean isDirectory, @Nullable BasicFileAttributes attrs, Iterable<String> relativePath) {
+                boolean test(Path path, String name, boolean isDirectory, Iterable<String> relativePath) {
                     return isDirectory || predicate.test(name)
                 }
             }

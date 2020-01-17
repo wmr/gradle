@@ -18,7 +18,6 @@ package org.gradle.invocation
 
 import org.gradle.StartParameter
 import org.gradle.api.Action
-import org.gradle.api.execution.SharedResourceContainer
 import org.gradle.api.initialization.dsl.ScriptHandler
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.SettingsInternal
@@ -84,7 +83,6 @@ class DefaultGradleSpec extends Specification {
         _ * serviceRegistry.get(CrossProjectConfigurator) >> crossProjectConfigurator
         _ * serviceRegistry.get(BuildScanConfigInit) >> Mock(BuildScanConfigInit)
         _ * serviceRegistry.get(PublicBuildPath) >> new DefaultPublicBuildPath(Path.ROOT)
-        _ * serviceRegistry.get(SharedResourceContainer) >> Mock(SharedResourceContainer)
 
         gradle = TestUtil.instantiatorFactory().decorateLenient().newInstance(DefaultGradle.class, null, parameter, serviceRegistryFactory)
     }
@@ -425,7 +423,7 @@ class DefaultGradleSpec extends Specification {
         def project = Spy(DefaultProject, constructorArgs: [
             name,
             null, null, null, Stub(ScriptSource),
-            gradle, serviceRegistryFactory,
+            gradle, Stub(ProjectState), serviceRegistryFactory,
             Stub(ClassLoaderScope), Stub(ClassLoaderScope)
         ])
         project.getProjectConfigurator() >> crossProjectConfigurator

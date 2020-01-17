@@ -18,6 +18,7 @@ package org.gradle.internal.snapshot;
 
 import com.google.common.collect.ImmutableList;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,8 +32,8 @@ public abstract class AbstractIncompleteSnapshotWithChildren extends AbstractFil
     }
 
     @Override
-    public Optional<FileSystemNode> invalidate(String absolutePath, int offset) {
-        return SnapshotUtil.handleChildren(children, absolutePath, offset, new SnapshotUtil.ChildHandler<Optional<FileSystemNode>>() {
+    public Optional<FileSystemNode> invalidate(VfsRelativePath relativePath, CaseSensitivity caseSensitivity) {
+        return SnapshotUtil.handleChildren(children, relativePath, caseSensitivity, new SnapshotUtil.ChildHandler<Optional<FileSystemNode>>() {
             @Override
             public Optional<FileSystemNode> handleNewChild(int insertBefore) {
                 return Optional.of(withIncompleteChildren());
@@ -41,7 +42,7 @@ public abstract class AbstractIncompleteSnapshotWithChildren extends AbstractFil
             @Override
             public Optional<FileSystemNode> handleChildOfExisting(int childIndex) {
                 FileSystemNode child = children.get(childIndex);
-                return SnapshotUtil.invalidateSingleChild(child, absolutePath, offset)
+                return SnapshotUtil.invalidateSingleChild(child, relativePath, caseSensitivity)
                     .map(invalidatedChild -> withReplacedChild(childIndex, child, invalidatedChild))
                     .map(Optional::of)
                     .orElseGet(() -> {
@@ -57,19 +58,19 @@ public abstract class AbstractIncompleteSnapshotWithChildren extends AbstractFil
     }
 
     @Override
-    public FileSystemNode store(String absolutePath, int offset, MetadataSnapshot snapshot) {
-        return SnapshotUtil.handleChildren(children, absolutePath, offset, new SnapshotUtil.ChildHandler<FileSystemNode>() {
+    public FileSystemNode store(VfsRelativePath relativePath, CaseSensitivity caseSensitivity, MetadataSnapshot snapshot) {
+        return SnapshotUtil.handleChildren(children, relativePath, caseSensitivity, new SnapshotUtil.ChildHandler<FileSystemNode>() {
             @Override
             public FileSystemNode handleNewChild(int insertBefore) {
                 List<FileSystemNode> newChildren = new ArrayList<>(children);
-                newChildren.add(insertBefore, snapshot.withPathToParent(absolutePath.substring(offset)));
+                newChildren.add(insertBefore, snapshot.asFileSystemNode(relativePath.getAsString()));
                 return withIncompleteChildren(getPathToParent(), newChildren);
             }
 
             @Override
             public FileSystemNode handleChildOfExisting(int childIndex) {
                 FileSystemNode child = children.get(childIndex);
-                return withReplacedChild(childIndex, child, SnapshotUtil.storeSingleChild(child, absolutePath, offset, snapshot));
+                return withReplacedChild(childIndex, child, SnapshotUtil.storeSingleChild(child, relativePath, caseSensitivity, snapshot));
             }
         });
     }
@@ -82,8 +83,8 @@ public abstract class AbstractIncompleteSnapshotWithChildren extends AbstractFil
     }
 
     @Override
-    protected Optional<MetadataSnapshot> getChildMetadata(String absolutePath, int offset) {
-        return SnapshotUtil.getMetadataFromChildren(children, absolutePath, offset, Optional::empty);
+    public Optional<MetadataSnapshot> getSnapshot(VfsRelativePath relativePath, CaseSensitivity caseSensitivity) {
+        return SnapshotUtil.getMetadataFromChildren(children, relativePath, caseSensitivity, Optional::empty);
     }
 
     /**
@@ -116,5 +117,13 @@ public abstract class AbstractIncompleteSnapshotWithChildren extends AbstractFil
         List<FileSystemNode> merged = new ArrayList<>(children);
         merged.set(childIndex, newChild);
         return withIncompleteChildren(getPathToParent(), merged);
+    }
+
+    @Override
+    public void accept(NodeVisitor visitor, @Nullable FileSystemNode parent) {
+        visitor.visitNode(this, parent);
+        for (FileSystemNode child : children) {
+            child.accept(visitor, this);
+        }
     }
 }

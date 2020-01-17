@@ -392,9 +392,9 @@ class FileCollectionSymlinkIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class CustomTask extends DefaultTask {
                 @${classpathType.name} File classpath
-    
+
                 @OutputFile File output
-    
+
                 @TaskAction execute() {}
             }
             task brokenClasspathInput(type: CustomTask) {
@@ -422,9 +422,9 @@ class FileCollectionSymlinkIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class CustomTask extends DefaultTask {
                 @${classpathType.name} File classpath
-    
+
                 @OutputFile File output
-    
+
                 @TaskAction execute() {}
             }
             task brokenClasspathInput(type: CustomTask) {
@@ -451,7 +451,7 @@ class FileCollectionSymlinkIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class CustomTask extends DefaultTask {
                 @InputDirectory @SkipWhenEmpty File directoryWithBrokenLink
-    
+
                 @TaskAction execute() {}
             }
             task brokenDirectoryWithSkipWhenEmpty(type: CustomTask) {

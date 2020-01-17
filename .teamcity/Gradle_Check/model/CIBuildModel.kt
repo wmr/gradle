@@ -25,6 +25,9 @@ enum class StageNames(override val stageName: String, override val description: 
     READY_FOR_RELEASE("Ready for Release", "Once a day: Rerun tests in more environments", "ReleaseAccept"),
     HISTORICAL_PERFORMANCE("Historical Performance", "Once a week: Run performance tests for multiple Gradle versions", "HistoricalPerformance"),
     EXPERIMENTAL("Experimental", "On demand: Run experimental tests", "Experimental"),
+    WINDOWS_10_EVALUATION_QUICK("Experimental Windows10 Quick", "On demand checks to test Windows 10 agents (quick tests)", "ExperimentalWindows10quick"),
+    WINDOWS_10_EVALUATION_PLATFORM("Experimental Windows10 Platform", "On demand checks to test Windows 10 agents (platform tests)", "ExperimentalWindows10platform"),
+    EXPERIMENTAL_VFS_RETENTION("Experimental VFS Retention", "On demand checks to run tests with VFS retention enabled", "ExperimentalVfsRetention"),
 }
 
 data class CIBuildModel(
@@ -53,11 +56,14 @@ data class CIBuildModel(
                 SpecificBuild.BuildDistributions,
                 SpecificBuild.Gradleception,
                 SpecificBuild.SmokeTestsMinJavaVersion,
-                SpecificBuild.SmokeTestsMaxJavaVersion
+                SpecificBuild.SmokeTestsMaxJavaVersion,
+                SpecificBuild.InstantSmokeTestsMinJavaVersion,
+                SpecificBuild.InstantSmokeTestsMaxJavaVersion
             ),
             functionalTests = listOf(
                 TestCoverage(3, TestType.platform, Os.linux, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
-                TestCoverage(4, TestType.platform, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor)),
+                TestCoverage(4, TestType.platform, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor),
+                TestCoverage(20, TestType.instant, Os.linux, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor)),
             performanceTests = listOf(PerformanceTestType.test),
             omitsSlowProjects = true),
         Stage(StageNames.READY_FOR_NIGHTLY,
@@ -91,18 +97,45 @@ data class CIBuildModel(
                 TestCoverage(16, TestType.quick, Os.linux, JvmCategory.EXPERIMENTAL_VERSION.version, vendor = JvmCategory.EXPERIMENTAL_VERSION.vendor),
                 TestCoverage(17, TestType.quick, Os.windows, JvmCategory.EXPERIMENTAL_VERSION.version, vendor = JvmCategory.EXPERIMENTAL_VERSION.vendor),
                 TestCoverage(18, TestType.platform, Os.linux, JvmCategory.EXPERIMENTAL_VERSION.version, vendor = JvmCategory.EXPERIMENTAL_VERSION.vendor),
-                TestCoverage(19, TestType.platform, Os.windows, JvmCategory.EXPERIMENTAL_VERSION.version, vendor = JvmCategory.EXPERIMENTAL_VERSION.vendor))
-        )
-    ),
+                TestCoverage(19, TestType.platform, Os.windows, JvmCategory.EXPERIMENTAL_VERSION.version, vendor = JvmCategory.EXPERIMENTAL_VERSION.vendor))),
+        Stage(StageNames.WINDOWS_10_EVALUATION_QUICK,
+            trigger = Trigger.never,
+            runsIndependent = true,
+            disablesBuildCache = true,
+            functionalTests = listOf(
+                TestCoverage(26, TestType.quick, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor))),
+        Stage(StageNames.WINDOWS_10_EVALUATION_PLATFORM,
+            trigger = Trigger.never,
+            runsIndependent = true,
+            disablesBuildCache = true,
+            functionalTests = listOf(
+                TestCoverage(21, TestType.platform, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor),
+                TestCoverage(22, TestType.quickFeedbackCrossVersion, Os.windows, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(23, TestType.soak, Os.windows, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(24, TestType.allVersionsCrossVersion, Os.windows, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(25, TestType.noDaemon, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor))),
+        Stage(StageNames.EXPERIMENTAL_VFS_RETENTION,
+            trigger = Trigger.never,
+            runsIndependent = true,
+            functionalTests = listOf(
+                TestCoverage(27, TestType.vfsRetention, Os.linux, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(28, TestType.vfsRetention, Os.linux, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor),
+                TestCoverage(29, TestType.vfsRetention, Os.windows, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(30, TestType.vfsRetention, Os.windows, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor),
+                TestCoverage(31, TestType.vfsRetention, Os.macos, JvmCategory.MIN_VERSION.version, vendor = JvmCategory.MIN_VERSION.vendor),
+                TestCoverage(32, TestType.vfsRetention, Os.macos, JvmCategory.MAX_VERSION.version, vendor = JvmCategory.MAX_VERSION.vendor)))
+        ),
 
     val subProjects: List<GradleSubproject> = listOf(
         GradleSubproject("antlr"),
         GradleSubproject("baseServices"),
         GradleSubproject("baseServicesGroovy", functionalTests = false),
         GradleSubproject("bootstrap", unitTests = false, functionalTests = false),
+        GradleSubproject("buildCacheBase", unitTests = false, functionalTests = false),
         GradleSubproject("buildCache"),
-        GradleSubproject("buildCacheHttp"),
-        GradleSubproject("buildCachePackaging"),
+        GradleSubproject("buildCacheHttp", unitTests = false),
+        GradleSubproject("buildCachePackaging", functionalTests = false),
+        GradleSubproject("buildEvents"),
         GradleSubproject("buildProfile"),
         GradleSubproject("buildOption", functionalTests = false),
         GradleSubproject("buildInit"),
@@ -120,10 +153,10 @@ data class CIBuildModel(
         GradleSubproject("hashing", functionalTests = false),
         GradleSubproject("ide", crossVersionTests = true),
         GradleSubproject("ideNative"),
-        GradleSubproject("idePlay"),
+        GradleSubproject("idePlay", unitTests = false),
         GradleSubproject("instantExecution"),
         GradleSubproject("instantExecutionReport", unitTests = false, functionalTests = false),
-        GradleSubproject("integTest", crossVersionTests = true),
+        GradleSubproject("integTest", unitTests = false, crossVersionTests = true),
         GradleSubproject("internalIntegTesting"),
         GradleSubproject("internalPerformanceTesting"),
         GradleSubproject("internalTesting", functionalTests = false),
@@ -144,13 +177,13 @@ data class CIBuildModel(
         GradleSubproject("modelGroovy"),
         GradleSubproject("native"),
         GradleSubproject("persistentCache"),
-        GradleSubproject("pineapple", unitTests = false, functionalTests = false),
+        GradleSubproject("baseAnnotations", unitTests = false, functionalTests = false),
         GradleSubproject("platformBase"),
         GradleSubproject("platformJvm"),
         GradleSubproject("platformNative"),
         GradleSubproject("platformPlay", containsSlowTests = true),
         GradleSubproject("pluginDevelopment"),
-        GradleSubproject("pluginUse", crossVersionTests = true),
+        GradleSubproject("pluginUse"),
         GradleSubproject("plugins"),
         GradleSubproject("processServices"),
         GradleSubproject("publish"),
@@ -161,6 +194,7 @@ data class CIBuildModel(
         GradleSubproject("resourcesS3"),
         GradleSubproject("resourcesSftp"),
         GradleSubproject("scala"),
+        GradleSubproject("security", functionalTests = false),
         GradleSubproject("signing"),
         GradleSubproject("snapshots"),
         GradleSubproject("samples", unitTests = false, functionalTests = true),
@@ -181,10 +215,10 @@ data class CIBuildModel(
 
         GradleSubproject("apiMetadata", unitTests = false, functionalTests = false),
         GradleSubproject("kotlinDsl", unitTests = true, functionalTests = true),
-        GradleSubproject("kotlinDslProviderPlugins", unitTests = true, functionalTests = true),
+        GradleSubproject("kotlinDslProviderPlugins", unitTests = true, functionalTests = false),
         GradleSubproject("kotlinDslToolingModels", unitTests = false, functionalTests = false),
         GradleSubproject("kotlinDslToolingBuilders", unitTests = true, functionalTests = true, crossVersionTests = true),
-        GradleSubproject("kotlinDslPlugins", unitTests = true, functionalTests = true),
+        GradleSubproject("kotlinDslPlugins", unitTests = false, functionalTests = true),
         GradleSubproject("kotlinDslTestFixtures", unitTests = true, functionalTests = false),
         GradleSubproject("kotlinDslIntegTests", unitTests = false, functionalTests = true),
         GradleSubproject("kotlinCompilerEmbeddable", unitTests = false, functionalTests = false),
@@ -277,15 +311,18 @@ data class SubprojectSplit(val subproject: GradleSubproject, val total: Int) : B
 }
 
 data class SubprojectBucket(val name: String, val subprojects: List<GradleSubproject>) : BuildTypeBucket, Validatable {
-    override fun createFunctionalTestsFor(model: CIBuildModel, stage: Stage, testCoverage: TestCoverage) = listOf(
-        FunctionalTest(model, testCoverage.asConfigurationId(model, name),
-            "${testCoverage.asName()} (${subprojects.joinToString(", ") { it.name }})",
-            "${testCoverage.asName()} for ${subprojects.joinToString(", ") { it.name }}",
-            testCoverage,
-            stage,
-            subprojects.map { it.name }
+    override fun createFunctionalTestsFor(model: CIBuildModel, stage: Stage, testCoverage: TestCoverage): List<FunctionalTest> {
+        val subprojectsForCoverage = subprojects.filter { !it.shouldBeSkipped(testCoverage) }
+        return listOf(
+            FunctionalTest(model, testCoverage.asConfigurationId(model, name),
+                "${testCoverage.asName()} (${subprojectsForCoverage.joinToString(", ") { it.name }})",
+                "${testCoverage.asName()} for ${subprojectsForCoverage.joinToString(", ") { it.name }}",
+                testCoverage,
+                stage,
+                subprojectsForCoverage.map { it.name }
+            )
         )
-    )
+    }
 
     override fun getSubprojectNames(): List<String> {
         return subprojects.map { it.name }
@@ -314,7 +351,7 @@ data class SubprojectBucket(val name: String, val subprojects: List<GradleSubpro
         return count == 0 || count == subprojects.size
     }
 
-    override fun shouldBeSkipped(testCoverage: TestCoverage) = subprojects.any { it.shouldBeSkipped(testCoverage) }
+    override fun shouldBeSkipped(testCoverage: TestCoverage) = subprojects.all { it.shouldBeSkipped(testCoverage) }
 
     override fun containsSlowTests() = subprojects.any { it.containsSlowTests }
 
@@ -360,7 +397,7 @@ interface StageName {
         get() = stageName.replace(" ", "").replace("-", "")
 }
 
-data class Stage(val stageName: StageName, val specificBuilds: List<SpecificBuild> = emptyList(), val performanceTests: List<PerformanceTestType> = emptyList(), val functionalTests: List<TestCoverage> = emptyList(), val trigger: Trigger = Trigger.never, val functionalTestsDependOnSpecificBuilds: Boolean = false, val runsIndependent: Boolean = false, val omitsSlowProjects: Boolean = false, val dependsOnSanityCheck: Boolean = false) {
+data class Stage(val stageName: StageName, val specificBuilds: List<SpecificBuild> = emptyList(), val performanceTests: List<PerformanceTestType> = emptyList(), val functionalTests: List<TestCoverage> = emptyList(), val trigger: Trigger = Trigger.never, val functionalTestsDependOnSpecificBuilds: Boolean = false, val runsIndependent: Boolean = false, val omitsSlowProjects: Boolean = false, val dependsOnSanityCheck: Boolean = false, val disablesBuildCache: Boolean = false) {
     val id = stageName.id
 }
 
@@ -404,6 +441,8 @@ enum class TestType(val unitTests: Boolean = true, val functionalTests: Boolean 
     allVersionsCrossVersion(false, true, true, 240),
     parallel(false, true, false),
     noDaemon(false, true, false, 240),
+    instant(false, true, false),
+    vfsRetention(false, true, false),
     soak(false, false, false),
     forceRealizeDependencyManagement(false, true, false)
 }
@@ -413,7 +452,7 @@ enum class PerformanceTestType(val taskId: String, val displayName: String, val 
     slow("SlowPerformanceTest", "Slow Performance Regression Test", 420, "defaults", uuid = "PerformanceExperimentCoordinator"),
     experiment("PerformanceExperiment", "Performance Experiment", 420, "defaults", uuid = "PerformanceExperimentOnlyCoordinator"),
     flakinessDetection("FlakinessDetection", "Performance Test Flakiness Detection", 600, "flakiness-detection-commit"),
-    historical("HistoricalPerformanceTest", "Historical Performance Test", 2280, "3.5.1,4.10.2,5.6.2,last", "--checks none");
+    historical("HistoricalPerformanceTest", "Historical Performance Test", 2280, "3.5.1,4.10.3,5.6.4,last", "--checks none");
 
     fun asId(model: CIBuildModel): String =
         "${model.projectPrefix}Performance${name.capitalize()}Coordinator"
@@ -455,6 +494,16 @@ enum class SpecificBuild {
     SmokeTestsMaxJavaVersion {
         override fun create(model: CIBuildModel, stage: Stage): BuildType {
             return SmokeTests(model, stage, JvmCategory.MAX_VERSION)
+        }
+    },
+    InstantSmokeTestsMinJavaVersion {
+        override fun create(model: CIBuildModel, stage: Stage): BuildType {
+            return SmokeTests(model, stage, JvmCategory.MIN_VERSION, "instantSmokeTest")
+        }
+    },
+    InstantSmokeTestsMaxJavaVersion {
+        override fun create(model: CIBuildModel, stage: Stage): BuildType {
+            return SmokeTests(model, stage, JvmCategory.MAX_VERSION, "instantSmokeTest")
         }
     },
     DependenciesCheck {

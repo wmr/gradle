@@ -17,11 +17,15 @@
 package org.gradle.internal.scan.eob
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import spock.lang.Issue
 import spock.lang.Unroll
 
 @Unroll
 class BuildScanEndOfBuildNotifierIntegrationTest extends AbstractIntegrationSpec {
+
+    private static final VFS_RETENTION_OUTPUT = '''(Watching \\d* (directory hierarchies to track changes between builds in \\d* directories|directories to track changes between builds)
+)?'''
 
     def setup() {
         buildFile << """
@@ -50,7 +54,7 @@ build finished
 BUILD SUCCESSFUL in [ \\dms]+
 1 actionable task: 1 executed
 failure is null: true
-\$""")
+${VFS_RETENTION_OUTPUT}\$""")
     }
 
     def "can observe failed build after completion of user logic and build outcome is reported"() {
@@ -75,7 +79,7 @@ failure is null: true
 build finished
 1 actionable task: 1 executed
 failure message: Execution failed for task ':t'.
-\$""")
+${VFS_RETENTION_OUTPUT}\$""")
 
         result.error.matches("""(?s)build finished
 
@@ -87,6 +91,7 @@ notified
     }
 
     @Issue("https://github.com/gradle/gradle/issues/7511")
+    @ToBeFixedForInstantExecution
     def "can observe failed build after failure in included build buildFinished action"() {
         when:
         settingsFile << """
@@ -114,7 +119,7 @@ notified
         output.matches("""(?s).*
 1 actionable task: 1 executed
 failure message: broken
-\$""")
+${VFS_RETENTION_OUTPUT}\$""")
     }
 
     def "can only register one listener"() {

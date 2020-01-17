@@ -44,7 +44,9 @@ class BuildScanPluginSmokeTest extends AbstractSmokeTest {
     ]
 
     private static final List<String> SUPPORTED = [
-        "3.0"
+        "3.0",
+        "3.1",
+        "3.1.1"
     ]
 
     @Unroll
@@ -93,7 +95,7 @@ class BuildScanPluginSmokeTest extends AbstractSmokeTest {
                 plugins {
                     id "com.gradle.enterprise" version "$version"
                 }
-    
+
                 gradleEnterprise {
                     buildScan {
                         termsOfServiceUrl = 'https://gradle.com/terms-of-service'
@@ -106,7 +108,7 @@ class BuildScanPluginSmokeTest extends AbstractSmokeTest {
                 plugins {
                     id "com.gradle.build-scan" version "$version"
                 }
-    
+
                 buildScan {
                     termsOfServiceUrl = 'https://gradle.com/terms-of-service'
                     termsOfServiceAgree = 'yes'

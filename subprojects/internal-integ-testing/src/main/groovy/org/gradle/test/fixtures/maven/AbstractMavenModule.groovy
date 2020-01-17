@@ -35,6 +35,8 @@ import org.gradle.test.fixtures.gradle.GradleFileModuleAdapter
 import org.gradle.test.fixtures.gradle.VariantMetadataSpec
 
 import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 abstract class AbstractMavenModule extends AbstractModule implements MavenModule {
     private final TestFile rootDir
@@ -136,7 +138,8 @@ abstract class AbstractMavenModule extends AbstractModule implements MavenModule
                               type: attributes.type, scope: attributes.scope, classifier: attributes.classifier,
                               optional: attributes.optional, exclusions: attributes.exclusions, rejects: attributes.rejects,
                               prefers: attributes.prefers, strictly: attributes.strictly,
-                              endorseStrictVersions: attributes.endorseStrictVersions, reason: attributes.reason
+                              endorseStrictVersions: attributes.endorseStrictVersions, reason: attributes.reason,
+                              requireCapability: attributes.requireCapability
         ]
         return this
     }
@@ -480,6 +483,12 @@ abstract class AbstractMavenModule extends AbstractModule implements MavenModule
         return new Date(updateFormat.parse("20100101120000").time + publishCount * 1000)
     }
 
+    String getFormattedPublishTimestamp() {
+        publishTimestamp.toLocalDateTime()
+            .atZone(ZoneId.of("GMT"))
+            .format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss z").withLocale(Locale.ENGLISH))
+    }
+
     private void publishModuleMetadata() {
         def defaultArtifacts = getArtifact([:]).collect {
             new FileSpec(it.file.name, it.file.name)
@@ -495,7 +504,7 @@ abstract class AbstractMavenModule extends AbstractModule implements MavenModule
                     v.attributes,
                     v.dependencies + dependencies.findAll { !it.optional }.collect { d ->
                         new DependencySpec(d.groupId, d.artifactId, d.version, d.prefers, d.strictly, d.rejects, d.exclusions, d.endorseStrictVersions, d.reason, d.attributes,
-                            d.classifier ? new ArtifactSelectorSpec(d.artifactId, 'jar', 'jar', d.classifier) : null)
+                            d.classifier ? new ArtifactSelectorSpec(d.artifactId, 'jar', 'jar', d.classifier) : null, d.requireCapability)
                     },
                     v.dependencyConstraints + dependencies.findAll { it.optional }.collect { d ->
                         new DependencyConstraintSpec(d.groupId, d.artifactId, d.version, d.prefers, d.strictly, d.rejects, d.reason, d.attributes)
@@ -536,7 +545,7 @@ abstract class AbstractMavenModule extends AbstractModule implements MavenModule
                 artifactId(artifactId)
                 version(version)
                 packaging(pomPackaging)
-                description("Published on ${publishTimestamp}")
+                description("Published on ${formattedPublishTimestamp}")
                 if (parentPom) {
                     parent {
                         groupId(parentPom.groupId)
@@ -758,6 +767,12 @@ abstract class AbstractMavenModule extends AbstractModule implements MavenModule
     @Override
     MavenModule withoutDefaultVariants() {
         variants.clear()
+        this
+    }
+
+    @Override
+    MavenModule withSignature(@DelegatesTo(value = File, strategy = Closure.DELEGATE_FIRST) Closure<?> signer) {
+        super.withSignature(signer)
         this
     }
 }

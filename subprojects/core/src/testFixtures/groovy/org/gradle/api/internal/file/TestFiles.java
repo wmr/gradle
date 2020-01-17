@@ -50,6 +50,9 @@ import org.gradle.util.TestUtil;
 import javax.annotation.Nullable;
 import java.io.File;
 
+import static org.gradle.internal.snapshot.CaseSensitivity.CASE_INSENSITIVE;
+import static org.gradle.internal.snapshot.CaseSensitivity.CASE_SENSITIVE;
+
 public class TestFiles {
     private static final FileSystem FILE_SYSTEM = NativeServicesTestFixture.getInstance().get(FileSystem.class);
     private static final DefaultFileLookup FILE_LOOKUP = new DefaultFileLookup(PatternSets.getNonCachingPatternSetFactory());
@@ -101,6 +104,10 @@ public class TestFiles {
 
     public static Deleter deleter() {
         return new DefaultDeleter(Time.clock()::getCurrentTime, fileSystem()::isSymlink, false);
+    }
+
+    public static FileFactory fileFactory() {
+        return new DefaultFilePropertyFactory(resolver(), fileCollectionFactory());
     }
 
     public static FileOperations fileOperations(File basedDir) {
@@ -158,7 +165,7 @@ public class TestFiles {
     }
 
     public static VirtualFileSystem virtualFileSystem() {
-        return new DefaultVirtualFileSystem(fileHasher(), new StringInterner(), fileSystem());
+        return new DefaultVirtualFileSystem(fileHasher(), new StringInterner(), fileSystem(), fileSystem().isCaseSensitive() ? CASE_SENSITIVE : CASE_INSENSITIVE);
     }
 
     public static FileCollectionFactory fileCollectionFactory() {
