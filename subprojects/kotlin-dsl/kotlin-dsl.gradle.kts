@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":resources"))
     implementation(project(":buildCache"))
     implementation(project(":toolingApi"))
+    implementation(project(":execution"))
 
     implementation(library("groovy"))
     implementation(library("slf4j_api"))
