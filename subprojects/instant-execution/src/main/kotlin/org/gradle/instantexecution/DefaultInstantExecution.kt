@@ -16,6 +16,7 @@
 
 package org.gradle.instantexecution
 
+import org.gradle.api.Project
 import org.gradle.api.internal.project.ProjectStateRegistry
 import org.gradle.api.internal.provider.DefaultValueSourceProviderFactory
 import org.gradle.api.internal.provider.ValueSourceProviderFactory
@@ -29,6 +30,8 @@ import org.gradle.api.provider.ValueSourceParameters
 import org.gradle.execution.plan.Node
 import org.gradle.initialization.InstantExecution
 import org.gradle.instantexecution.extensions.uncheckedCast
+import org.gradle.instantexecution.extensions.unsafeLazy
+import org.gradle.instantexecution.initialization.InstantExecutionStartParameter
 import org.gradle.instantexecution.serialization.DefaultReadContext
 import org.gradle.instantexecution.serialization.DefaultWriteContext
 import org.gradle.instantexecution.serialization.IsolateOwner
@@ -37,11 +40,13 @@ import org.gradle.instantexecution.serialization.beans.BeanConstructors
 import org.gradle.instantexecution.serialization.codecs.Codecs
 import org.gradle.instantexecution.serialization.codecs.WorkNodeCodec
 import org.gradle.instantexecution.serialization.readCollection
+import org.gradle.instantexecution.serialization.readFile
 import org.gradle.instantexecution.serialization.readNonNull
 import org.gradle.instantexecution.serialization.withIsolate
 import org.gradle.instantexecution.serialization.writeCollection
+import org.gradle.instantexecution.serialization.writeFile
 import org.gradle.internal.build.event.BuildEventListenerRegistryInternal
-import org.gradle.internal.hash.HashUtil
+import org.gradle.internal.hash.HashUtil.createCompactMD5
 import org.gradle.internal.operations.BuildOperationExecutor
 import org.gradle.internal.serialize.Decoder
 import org.gradle.internal.serialize.Encoder
@@ -49,13 +54,11 @@ import org.gradle.internal.serialize.kryo.KryoBackedDecoder
 import org.gradle.internal.serialize.kryo.KryoBackedEncoder
 import org.gradle.internal.vfs.VirtualFileSystem
 import org.gradle.tooling.events.OperationCompletionListener
+import org.gradle.util.GFileUtils.relativePathOf
 import org.gradle.util.GradleVersion
-import org.gradle.util.Path
 import java.io.File
 import java.nio.file.Files
 import java.util.ArrayList
-import java.util.SortedSet
-import java.util.TreeSet
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -63,6 +66,7 @@ import kotlin.coroutines.startCoroutine
 
 class DefaultInstantExecution internal constructor(
     private val host: Host,
+    private val startParameter: InstantExecutionStartParameter,
     private val scopeRegistryListener: InstantExecutionClassLoaderScopeRegistryListener,
     private val beanConstructors: BeanConstructors,
     private val valueSourceProviderFactory: ValueSourceProviderFactory,
@@ -71,36 +75,28 @@ class DefaultInstantExecution internal constructor(
 
     interface Host {
 
-        val skipLoadingStateReason: String?
-
         val currentBuild: ClassicModeBuild
 
         fun createBuild(rootProjectName: String): InstantExecutionBuild
 
         fun <T> getService(serviceType: Class<T>): T
-
-        fun getSystemProperty(propertyName: String): String?
-
-        val rootDir: File
-
-        val requestedTaskNames: List<String>
     }
 
     override fun canExecuteInstantaneously(): Boolean = when {
         !isInstantExecutionEnabled -> {
             false
         }
-        host.skipLoadingStateReason != null -> {
+        startParameter.isRefreshDependencies -> {
             log(
                 "Calculating task graph as instant execution cache cannot be reused due to {}",
-                host.skipLoadingStateReason
+                "--refresh-dependencies"
             )
             false
         }
         !instantExecutionFingerprintFile.isFile -> {
             log(
                 "Calculating task graph as no instant execution cache is available for tasks: {}",
-                host.requestedTaskNames.joinToString(" ")
+                startParameter.requestedTaskNames.joinToString(" ")
             )
             false
         }
@@ -207,7 +203,6 @@ class DefaultInstantExecution internal constructor(
         readRelevantProjects(build)
 
         build.registerProjects()
-        build.autoApplyPlugins()
 
         initProjectProvider(build::getProject)
 
@@ -273,14 +268,14 @@ class DefaultInstantExecution internal constructor(
                     .uncheckedCast<SystemPropertyValueSource.Parameters>()
                     .propertyName
                     .get()
-                if (value.get() != systemProperty(propertyName)) {
+                if (value.get() != System.getProperty(propertyName)) {
                     "system property '$propertyName' has changed"
                 } else {
                     null
                 }
             }
             else -> {
-                val valueSource = instantiateValueSourceOf(this)
+                val valueSource = instantiateValueSource()
                 if (value.get() != valueSource.obtain()) {
                     "a build logic input has changed"
                 } else {
@@ -291,14 +286,12 @@ class DefaultInstantExecution internal constructor(
     }
 
     private
-    fun instantiateValueSourceOf(obtainedValue: ObtainedValue): ValueSource<Any, ValueSourceParameters> =
-        obtainedValue.run {
-            (valueSourceProviderFactory as DefaultValueSourceProviderFactory).instantiateValueSource(
-                valueSourceType,
-                valueSourceParametersType,
-                valueSourceParameters
-            )
-        }
+    fun ObtainedValue.instantiateValueSource(): ValueSource<Any, ValueSourceParameters> =
+        (valueSourceProviderFactory as DefaultValueSourceProviderFactory).instantiateValueSource(
+            valueSourceType,
+            valueSourceParametersType,
+            valueSourceParameters
+        )
 
     private
     fun attachBuildLogicInputsCollector() {
@@ -376,7 +369,7 @@ class DefaultInstantExecution internal constructor(
     )
 
     private
-    val codecs: Codecs by lazy {
+    val codecs: Codecs by unsafeLazy {
         Codecs(
             directoryFileTreeFactory = service(),
             fileCollectionFactory = service(),
@@ -436,8 +429,9 @@ class DefaultInstantExecution internal constructor(
 
     private
     fun Encoder.writeRelevantProjectsFor(nodes: List<Node>) {
-        writeCollection(fillTheGapsOf(relevantProjectPathsFor(nodes))) { projectPath ->
-            writeString(projectPath.path)
+        writeCollection(fillTheGapsOf(relevantProjectPathsFor(nodes))) { project ->
+            writeString(project.path)
+            writeFile(project.projectDir)
         }
     }
 
@@ -445,17 +439,16 @@ class DefaultInstantExecution internal constructor(
     fun Decoder.readRelevantProjects(build: InstantExecutionBuild) {
         readCollection {
             val projectPath = readString()
-            build.createProject(projectPath)
+            val projectDir = readFile()
+            build.createProject(projectPath, projectDir)
         }
     }
 
     private
-    fun relevantProjectPathsFor(nodes: List<Node>): SortedSet<Path> =
-        nodes.mapNotNullTo(TreeSet()) { node ->
+    fun relevantProjectPathsFor(nodes: List<Node>): List<Project> =
+        nodes.mapNotNullTo(mutableListOf()) { node ->
             node.owningProject
                 ?.takeIf { it.parent != null }
-                ?.path
-                ?.let(Path::path)
         }
 
     private
@@ -477,19 +470,52 @@ class DefaultInstantExecution internal constructor(
     }
 
     private
-    val instantExecutionFingerprintFile by lazy {
+    val instantExecutionFingerprintFile by unsafeLazy {
         instantExecutionStateFile.run {
             resolveSibling("$name.fingerprint")
         }
     }
 
     private
-    val instantExecutionStateFile by lazy {
+    val instantExecutionStateFile by unsafeLazy {
         val cacheDir = absoluteFile(".instant-execution-state/${currentGradleVersion()}")
-        val baseName = compactMD5For(host.requestedTaskNames)
+        val baseName = createCompactMD5(instantExecutionCacheKey())
         val cacheFileName = "$baseName.bin"
         File(cacheDir, cacheFileName)
     }
+
+    private
+    fun instantExecutionCacheKey() = startParameter.run {
+        // The following characters are not valid in task names
+        // and can be used as separators: /, \, :, <, >, ", ?, *, |
+        // except we also accept qualified task names with :, so colon is out.
+        val cacheKey = StringBuilder()
+        requestedTaskNames.joinTo(cacheKey, separator = "/")
+        if (excludedTaskNames.isNotEmpty()) {
+            excludedTaskNames.joinTo(cacheKey, prefix = "<", separator = "/")
+        }
+        val taskNames = requestedTaskNames.asSequence() + excludedTaskNames.asSequence()
+        val hasRelativeTaskName = taskNames.any { !it.startsWith(':') }
+        if (hasRelativeTaskName) {
+            // Because unqualified task names are resolved relative to the enclosing
+            // sub-project according to `invocationDir` we need to include
+            // the relative invocation dir information in the key.
+            relativeChildPathOrNull(invocationDir, rootDirectory)?.let { relativeSubDir ->
+                cacheKey.append('*')
+                cacheKey.append(relativeSubDir)
+            }
+        }
+        cacheKey.toString()
+    }
+
+    /**
+     * Returns the path of [target] relative to [base] if
+     * [target] is a child of [base] or `null` otherwise.
+     */
+    private
+    fun relativeChildPathOrNull(target: File, base: File): String? =
+        relativePathOf(target, base)
+            .takeIf { !it.startsWith('.') }
 
     private
     fun currentGradleVersion(): String =
@@ -497,10 +523,10 @@ class DefaultInstantExecution internal constructor(
 
     private
     fun absoluteFile(path: String) =
-        File(host.rootDir, path).absoluteFile
+        File(startParameter.rootDirectory, path).absoluteFile
 
     private
-    val reportOutputDir by lazy {
+    val reportOutputDir by unsafeLazy {
         instantExecutionStateFile.run {
             resolveSibling(nameWithoutExtension)
         }
@@ -508,14 +534,14 @@ class DefaultInstantExecution internal constructor(
 
     // Skip instant execution for buildSrc for now. Should instead collect up the inputs of its tasks and treat as task graph cache inputs
     private
-    val isInstantExecutionEnabled: Boolean by lazy {
-        systemProperty(SystemProperties.isEnabled)?.toBoolean() ?: false
+    val isInstantExecutionEnabled: Boolean by unsafeLazy {
+        systemPropertyFlag(SystemProperties.isEnabled)
             && !host.currentBuild.buildSrc
     }
 
     private
     val instantExecutionLogLevel: LogLevel
-        get() = when (systemProperty(SystemProperties.isQuiet)?.toBoolean()) {
+        get() = when (systemPropertyFlag(SystemProperties.isQuiet)) {
             true -> LogLevel.INFO
             else -> LogLevel.LIFECYCLE
         }
@@ -527,18 +553,16 @@ class DefaultInstantExecution internal constructor(
             ?: 512
 
     private
-    fun failOnProblems(): Boolean =
-        systemProperty(SystemProperties.failOnProblems)
-            ?.toBoolean()
-            ?: false
+    fun failOnProblems() =
+        systemPropertyFlag(SystemProperties.failOnProblems)
+
+    private
+    fun systemPropertyFlag(propertyName: String): Boolean =
+        systemProperty(propertyName)?.toBoolean() ?: false
 
     private
     fun systemProperty(propertyName: String) =
-        host.getSystemProperty(propertyName)
-
-    private
-    fun compactMD5For(taskNames: List<String>) =
-        HashUtil.createCompactMD5(taskNames.joinToString("/"))
+        startParameter.systemPropertyArg(propertyName) ?: System.getProperty(propertyName)
 }
 
 
@@ -551,22 +575,22 @@ inline fun <reified T> DefaultInstantExecution.Host.service(): T =
 
 
 internal
-fun fillTheGapsOf(paths: SortedSet<Path>): List<Path> {
-    val pathsWithoutGaps = ArrayList<Path>(paths.size)
+fun fillTheGapsOf(projects: Collection<Project>): List<Project> {
+    val projectsWithoutGaps = ArrayList<Project>(projects.size)
     var index = 0
-    paths.forEach { path ->
-        var parent = path.parent
+    projects.forEach { project ->
+        var parent = project.parent
         var added = 0
-        while (parent !== null && parent !in pathsWithoutGaps) {
-            pathsWithoutGaps.add(index, parent)
+        while (parent !== null && parent !in projectsWithoutGaps) {
+            projectsWithoutGaps.add(index, parent)
             added += 1
             parent = parent.parent
         }
-        pathsWithoutGaps.add(path)
+        projectsWithoutGaps.add(project)
         added += 1
         index += added
     }
-    return pathsWithoutGaps
+    return projectsWithoutGaps
 }
 
 

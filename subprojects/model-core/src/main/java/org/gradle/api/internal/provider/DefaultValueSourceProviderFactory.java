@@ -18,6 +18,8 @@ package org.gradle.api.internal.provider;
 
 import org.gradle.api.Action;
 import org.gradle.api.NonExtensible;
+import org.gradle.api.internal.properties.GradleProperties;
+import org.gradle.api.internal.tasks.TaskDependencyResolveContext;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ValueSource;
 import org.gradle.api.provider.ValueSourceParameters;
@@ -39,6 +41,7 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
 
     private final InstantiatorFactory instantiatorFactory;
     private final IsolatableFactory isolatableFactory;
+    private final GradleProperties gradleProperties;
     private final AnonymousListenerBroadcast<Listener> broadcaster;
     private final IsolationScheme<ValueSource, ValueSourceParameters> isolationScheme = new IsolationScheme<>(ValueSource.class, ValueSourceParameters.class, ValueSourceParameters.None.class);
     private final InstanceGenerator paramsInstantiator;
@@ -48,11 +51,13 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
         ListenerManager listenerManager,
         InstantiatorFactory instantiatorFactory,
         IsolatableFactory isolatableFactory,
+        GradleProperties gradleProperties,
         ServiceLookup services
     ) {
         this.broadcaster = listenerManager.createAnonymousBroadcaster(ValueSourceProviderFactory.Listener.class);
         this.instantiatorFactory = instantiatorFactory;
         this.isolatableFactory = isolatableFactory;
+        this.gradleProperties = gradleProperties;
         // TODO - dedupe logic copied from DefaultBuildServicesRegistry
         this.paramsInstantiator = instantiatorFactory.decorateScheme().withServices(services).instantiator();
         this.specInstantiator = instantiatorFactory.decorateLenientScheme().withServices(services).instantiator();
@@ -94,6 +99,7 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
     ) {
         DefaultServiceRegistry services = new DefaultServiceRegistry();
         services.add(parametersType, isolatedParameters);
+        services.add(GradleProperties.class, gradleProperties);
         return instantiatorFactory
             .injectScheme()
             .withServices(services)
@@ -137,7 +143,7 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
         }
     }
 
-    public class ValueSourceProvider<T, P extends ValueSourceParameters> extends AbstractReadOnlyProvider<T> {
+    public class ValueSourceProvider<T, P extends ValueSourceParameters> extends AbstractMinimalProvider<T> {
 
         private final Class<? extends ValueSource<T, P>> valueSourceType;
         private final Class<P> parametersType;
@@ -169,6 +175,12 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
         }
 
         @Override
+        public boolean maybeVisitBuildDependencies(TaskDependencyResolveContext context) {
+            // For now, assume value is never calculated from a task output
+            return true;
+        }
+
+        @Override
         public boolean isValueProducedByTask() {
             return value == null;
         }
@@ -189,9 +201,8 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
             return null;
         }
 
-        @Nullable
         @Override
-        public T getOrNull() {
+        protected Value<? extends T> calculateOwnValue() {
             synchronized (this) {
                 if (value == null) {
 
@@ -200,7 +211,7 @@ public class DefaultValueSourceProviderFactory implements ValueSourceProviderFac
 
                     onValueObtained();
                 }
-                return value.get();
+                return Value.ofNullable(value.get());
             }
         }
 

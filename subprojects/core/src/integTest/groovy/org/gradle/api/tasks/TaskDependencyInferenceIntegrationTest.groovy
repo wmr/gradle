@@ -113,7 +113,7 @@ class TaskDependencyInferenceIntegrationTest extends AbstractIntegrationSpec imp
         buildFile << """
             def task = tasks.create("a", FileProducer) {
                 output = file("a.txt")
-            }            
+            }
             tasks.register("b") {
                 dependsOn task.output.map { throw new RuntimeException() }
             }
@@ -244,7 +244,7 @@ class TaskDependencyInferenceIntegrationTest extends AbstractIntegrationSpec imp
         result.assertTasksExecuted(":b", ":c")
     }
 
-    def "dependency declared using orElse provider whose original value is missing and  alternative value is constant does not imply task dependency"() {
+    def "dependency declared using orElse provider whose original value is missing and alternative value is constant does not imply task dependency"() {
         taskTypeWithOutputFileProperty()
         buildFile << """
             def taskA = tasks.create("a", FileProducer) {
@@ -488,7 +488,7 @@ The following types/formats are supported:
 
         then:
         failure.assertHasDescription("Could not determine the dependencies of task ':a'.")
-        failure.assertHasCause("No value has been specified for this property.")
+        failure.assertHasCause("Cannot query the value of this property because it has no value available.")
     }
 
     def "input file collection containing task provider implies dependency on all outputs of the task"() {
@@ -563,7 +563,7 @@ The following types/formats are supported:
         buildFile << """
             def taskA = tasks.create("a", FileProducer) {
                 output = file("a.txt")
-                content = "a" 
+                content = "a"
             }
             def taskB = tasks.create("b", FileProducer) {
                 output = file("b.txt")
@@ -589,7 +589,7 @@ The following types/formats are supported:
         buildFile << """
             def taskA = tasks.create("a", FileProducer) {
                 output = file("a.txt")
-                content = "a" 
+                content = "a"
             }
             tasks.register("c", InputFileTask) {
                 inFile = taskA.output.orElse(file("b.txt"))
@@ -779,7 +779,7 @@ The following types/formats are supported:
             }
             configurations { thing }
             dependencies { thing a.outputs.files }
-            
+
             tasks.register("b", InputFilesTask) {
                 inFiles.from configurations.named('thing')
                 outFile = file("out.txt")
@@ -824,7 +824,7 @@ The following types/formats are supported:
 
     def "input property with value of mapped task output implies dependency on the task"() {
         taskTypeWithOutputFileProperty()
-        taskTypeWithInputProperty()
+        taskTypeWithIntInputProperty()
         buildFile << """
             def task = tasks.create("a", FileProducer) {
                 output = file("file.txt")
@@ -866,7 +866,7 @@ The following types/formats are supported:
 
     def "input property with value of mapped task output location does not imply dependency on the task"() {
         taskTypeWithOutputFileProperty()
-        taskTypeWithInputProperty()
+        taskTypeWithIntInputProperty()
         buildFile << """
             def task = tasks.create("a", FileProducer) {
                 output = file("file.txt")
@@ -887,7 +887,7 @@ The following types/formats are supported:
     }
 
     def "input property can have value of mapped output property of same task"() {
-        taskTypeWithInputProperty()
+        taskTypeWithIntInputProperty()
         buildFile << """
             tasks.register("b", InputTask) {
                 inValue = outFile.locationOnly.map { it.asFile.name.length() }

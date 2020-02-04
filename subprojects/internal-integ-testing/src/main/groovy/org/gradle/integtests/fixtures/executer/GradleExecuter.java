@@ -232,6 +232,20 @@ public interface GradleExecuter extends Stoppable {
     GradleExecuter withDaemonBaseDir(File baseDir);
 
     /**
+     * Sets the path to the read-only dependency cache
+     * @param cacheDir the path to the RO dependency cache
+     * @return this executer
+     */
+    GradleExecuter withReadOnlyCacheDir(File cacheDir);
+
+    /**
+     * Sets the path to the read-only dependency cache
+     * @param cacheDir the path to the RO dependency cache
+     * @return this executer
+     */
+    GradleExecuter withReadOnlyCacheDir(String cacheDir);
+
+    /**
      * Returns the working space for any daemons used by the builds.
      */
     File getDaemonBaseDir();
@@ -298,6 +312,11 @@ public interface GradleExecuter extends Stoppable {
      * Expects exactly the given deprecation warning.
      */
     GradleExecuter expectDeprecationWarning(String warning);
+
+    /**
+     * Expects the given deprecation warning, allowing to pass documentation url with /current/ version and asserting against the actual current version instead.
+     */
+    GradleExecuter expectDocumentedDeprecationWarning(String warning);
 
     /**
      * Expects exactly the given number of deprecation warnings. If fewer or more warnings are produced during

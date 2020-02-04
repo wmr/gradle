@@ -18,75 +18,103 @@ package org.gradle.internal.deprecation;
 
 import com.google.common.base.Joiner;
 
+import javax.annotation.CheckReturnValue;
 import java.util.List;
 
 import static org.gradle.internal.deprecation.Messages.pleaseUseThisMethodInstead;
 import static org.gradle.internal.deprecation.Messages.thisIsScheduledToBeRemoved;
 import static org.gradle.internal.deprecation.Messages.thisWillBecomeAnError;
 
-public class DeprecationMessageBuilder {
+@CheckReturnValue
+public class DeprecationMessageBuilder<T extends DeprecationMessageBuilder<T>> {
 
     private String summary;
     private String removalDetails;
     private String context;
     private String advice;
-
-    private DocumentationReference documentationReference = DocumentationReference.NO_DOCUMENTATION;
-
+    private Documentation documentation = Documentation.NO_DOCUMENTATION;
     private DeprecatedFeatureUsage.Type usageType = DeprecatedFeatureUsage.Type.USER_CODE_DIRECT;
 
     DeprecationMessageBuilder() {
     }
 
-    public DeprecationMessageBuilder withContext(String context) {
+    @SuppressWarnings("unchecked")
+    public T withContext(String context) {
         this.context = context;
-        return this;
+        return (T) this;
     }
 
-    public DeprecationMessageBuilder withAdvice(String advice) {
+    @SuppressWarnings("unchecked")
+    public T withAdvice(String advice) {
         this.advice = advice;
-        return this;
+        return (T) this;
     }
 
-    public DeprecationMessageBuilder guidedBy(String documentationId, String section) {
-        this.documentationReference = DocumentationReference.create(documentationId, section);
-        return this;
+    public WithDocumentation undocumented() {
+        return new WithDocumentation(this);
     }
 
-    public DeprecationMessageBuilder withUpgradeGuideSection(int majorVersion, String upgradeGuideSection) {
-        this.documentationReference = DocumentationReference.upgradeGuide(majorVersion, upgradeGuideSection);
-        return this;
+    public WithDocumentation withUserManual(String documentationId) {
+        this.documentation = Documentation.userManual(documentationId);
+        return new WithDocumentation(this);
     }
 
-    public void nagUser() {
-        DeprecationLogger.nagUserWith(this, DeprecationMessageBuilder.class);
+    public WithDocumentation withUserManual(String documentationId, String section) {
+        this.documentation = Documentation.userManual(documentationId, section);
+        return new WithDocumentation(this);
     }
 
-    DeprecationMessageBuilder withIndirectUsage() {
+    public WithDocumentation withDslReference(Class<?> targetClass, String property) {
+        this.documentation = Documentation.dslReference(targetClass, property);
+        return new WithDocumentation(this);
+    }
+
+    public WithDocumentation withUpgradeGuideSection(int majorVersion, String upgradeGuideSection) {
+        this.documentation = Documentation.upgradeGuide(majorVersion, upgradeGuideSection);
+        return new WithDocumentation(this);
+    }
+
+    void setIndirectUsage() {
         this.usageType = DeprecatedFeatureUsage.Type.USER_CODE_INDIRECT;
-        return this;
     }
 
-    DeprecationMessageBuilder withBuildInvocation() {
+    void setBuildInvocationUsage() {
         this.usageType = DeprecatedFeatureUsage.Type.BUILD_INVOCATION;
-        return this;
     }
 
-    DeprecationMessageBuilder withSummary(String summary) {
+    void setSummary(String summary) {
         this.summary = summary;
-        return this;
     }
 
-    DeprecationMessageBuilder withRemovalDetails(String removalDetails) {
+    void setAdvice(String advice) {
+        this.advice = advice;
+    }
+
+    void setRemovalDetails(String removalDetails) {
         this.removalDetails = removalDetails;
-        return this;
+    }
+
+    void setDocumentation(Documentation documentation) {
+        this.documentation = documentation;
     }
 
     DeprecationMessage build() {
-        return new DeprecationMessage(summary, removalDetails, advice, context, documentationReference, usageType);
+        return new DeprecationMessage(summary, removalDetails, advice, context, documentation, usageType);
     }
 
-    public static abstract class WithReplacement<T> extends DeprecationMessageBuilder {
+    public static class WithDocumentation {
+        private final DeprecationMessageBuilder<?> builder;
+
+        public WithDocumentation(DeprecationMessageBuilder<?> builder) {
+            this.builder = builder;
+        }
+
+        public void nagUser() {
+            DeprecationLogger.nagUserWith(builder, WithDocumentation.class);
+        }
+    }
+
+    public static abstract class WithReplacement<T, SELF extends WithReplacement<T, SELF>> extends DeprecationMessageBuilder<SELF> {
         private final String subject;
         private T replacement;
 
@@ -94,9 +122,14 @@ public class DeprecationMessageBuilder {
             this.subject = subject;
         }
 
-        public WithReplacement<T> replaceWith(T replacement) {
+        @SuppressWarnings("unchecked")
+        public SELF replaceWith(T replacement) {
             this.replacement = replacement;
-            return this;
+            return (SELF) this;
+        }
+
+        String formatSubject() {
+            return subject;
         }
 
         abstract String formatSummary(String subject);
@@ -109,16 +142,16 @@ public class DeprecationMessageBuilder {
 
         @Override
         DeprecationMessage build() {
-            withSummary(formatSummary(subject));
-            withRemovalDetails(removalDetails());
+            setSummary(formatSummary(formatSubject()));
+            setRemovalDetails(removalDetails());
             if (replacement != null) {
-                withAdvice(formatAdvice(replacement));
+                setAdvice(formatAdvice(replacement));
             }
             return super.build();
         }
     }
 
-    public static class DeprecateNamedParameter extends WithReplacement<String> {
+    public static class DeprecateNamedParameter extends WithReplacement<String, DeprecateNamedParameter> {
 
         DeprecateNamedParameter(String parameter) {
             super(parameter);
@@ -135,10 +168,24 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecateProperty extends WithReplacement<String> {
+    public static class DeprecateProperty extends WithReplacement<String, DeprecateProperty> {
+        private final Class<?> propertyClass;
+        private final String property;
 
-        DeprecateProperty(String property) {
+        DeprecateProperty(Class<?> propertyClass, String property) {
             super(property);
+            this.propertyClass = propertyClass;
+            this.property = property;
+        }
+
+        public WithDocumentation withDslReference() {
+            setDocumentation(Documentation.dslReference(propertyClass, property));
+            return new WithDocumentation(this);
+        }
+
+        @Override
+        String formatSubject() {
+            return String.format("%s.%s", propertyClass.getSimpleName(), property);
         }
 
         @Override
@@ -152,6 +199,7 @@ public class DeprecationMessageBuilder {
         }
     }
 
+    @CheckReturnValue
     public static class ConfigurationDeprecationTypeSelector {
         private final String configuration;
 
@@ -176,14 +224,14 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecateConfiguration extends WithReplacement<List<String>> {
+    public static class DeprecateConfiguration extends WithReplacement<List<String>, DeprecateConfiguration> {
         private final ConfigurationDeprecationType deprecationType;
 
         DeprecateConfiguration(String configuration, ConfigurationDeprecationType deprecationType) {
             super(configuration);
             this.deprecationType = deprecationType;
             if (!deprecationType.inUserCode) {
-                withIndirectUsage();
+                setIndirectUsage();
             }
         }
 
@@ -203,10 +251,19 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecateMethod extends WithReplacement<String> {
+    public static class DeprecateMethod extends WithReplacement<String, DeprecateMethod> {
+        private final Class<?> methodClass;
+        private final String methodWithParams;
 
-        DeprecateMethod(String method) {
-            super(method);
+        DeprecateMethod(Class<?> methodClass, String methodWithParams) {
+            super(methodWithParams);
+            this.methodClass = methodClass;
+            this.methodWithParams = methodWithParams;
+        }
+
+        @Override
+        String formatSubject() {
+            return String.format("%s.%s", methodClass.getSimpleName(), methodWithParams);
         }
 
         @Override
@@ -220,7 +277,7 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecateInvocation extends WithReplacement<String> {
+    public static class DeprecateInvocation extends WithReplacement<String, DeprecateInvocation> {
 
         DeprecateInvocation(String invocation) {
             super(invocation);
@@ -242,7 +299,7 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecateTask extends WithReplacement<String> {
+    public static class DeprecateTask extends WithReplacement<String, DeprecateTask> {
         DeprecateTask(String task) {
             super(task);
         }
@@ -258,7 +315,7 @@ public class DeprecationMessageBuilder {
         }
     }
 
-    public static class DeprecatePlugin extends WithReplacement<String> {
+    public static class DeprecatePlugin extends WithReplacement<String, DeprecatePlugin> {
 
         private boolean externalReplacement = false;
 
@@ -276,13 +333,13 @@ public class DeprecationMessageBuilder {
             return externalReplacement ? String.format("Consider using the %s plugin instead.", replacement) : String.format("Please use the %s plugin instead.", replacement);
         }
 
-        public DeprecationMessageBuilder replaceWithExternalPlugin(String replacement) {
+        public DeprecatePlugin replaceWithExternalPlugin(String replacement) {
             this.externalReplacement = true;
             return replaceWith(replacement);
         }
     }
 
-    public static class DeprecateInternalApi extends WithReplacement<String> {
+    public static class DeprecateInternalApi extends WithReplacement<String, DeprecateInternalApi> {
         DeprecateInternalApi(String api) {
             super(api);
         }

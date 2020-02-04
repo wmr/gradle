@@ -19,7 +19,6 @@ import org.gradle.api.Incubating;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.internal.provider.AbstractReadOnlyProvider;
 import org.gradle.api.model.ReplacedBy;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Classpath;
@@ -27,8 +26,8 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.SourceTask;
 
-import javax.annotation.Nullable;
 import java.io.File;
+import java.util.concurrent.Callable;
 
 /**
  * The base class for all JVM-based language compilation tasks.
@@ -41,7 +40,7 @@ public abstract class AbstractCompile extends SourceTask {
 
     public AbstractCompile() {
         this.destinationDirectory = getProject().getObjects().directoryProperty();
-        this.destinationDirectory.convention(new BackwardCompatibilityOutputDirectoryConvention());
+        this.destinationDirectory.convention(getProject().getProviders().provider(new BackwardCompatibilityOutputDirectoryConvention()));
     }
 
     /**
@@ -98,7 +97,6 @@ public abstract class AbstractCompile extends SourceTask {
      * Sets the directory to generate the {@code .class} files into.
      *
      * @param destinationDir The destination directory. Must not be null.
-     *
      * @since 4.0
      */
     public void setDestinationDir(Provider<File> destinationDir) {
@@ -146,31 +144,29 @@ public abstract class AbstractCompile extends SourceTask {
     /**
      * Convention to fall back to the 'destinationDir' output for backwards compatibility with plugins that extend AbstractCompile and override the deprecated methods.
      */
-    private class BackwardCompatibilityOutputDirectoryConvention extends AbstractReadOnlyProvider<Directory> {
+    private class BackwardCompatibilityOutputDirectoryConvention implements Callable<Directory> {
         private boolean recursiveCall;
 
         @Override
-        public Class<Directory> getType() {
-            return Directory.class;
-        }
-
-        @Nullable
-        @Override
-        public Directory getOrNull() {
+        public Directory call() throws Exception {
             if (recursiveCall) {
-                // getOrNull() was called by AbstractCompile.getDestinationDirectory() and not by a subclass implementation of that method.
+                // Already quering AbstractCompile.getDestinationDirectory() and not by a subclass implementation of that method.
                 // In that case, this convention should not be used.
                 return null;
             }
             recursiveCall = true;
-            // If we are not in an error case, this will most likely call a subclass implementation of getDestinationDir().
-            // In the Kotlin plugin, the subclass manages it's own field which will be used here.
-            File legacyValue = getDestinationDir();
-            recursiveCall = false;
+            File legacyValue;
+            try {
+                // If we are not in an error case, this will most likely call a subclass implementation of getDestinationDir().
+                // In the Kotlin plugin, the subclass manages it's own field which will be used here.
+                legacyValue = getDestinationDir();
+            } finally {
+                recursiveCall = false;
+            }
             if (legacyValue == null) {
                 return null;
             } else {
-                return getProject().getLayout().dir(getProject().provider(() -> legacyValue)).get();
+                return getProject().getLayout().getProjectDirectory().dir(legacyValue.getAbsolutePath());
             }
         }
     }

@@ -16,13 +16,15 @@
 
 package org.gradle.api.internal.provider
 
-import org.gradle.api.Action
+
 import org.gradle.api.Task
 import org.gradle.api.Transformer
 import org.gradle.api.internal.tasks.TaskDependencyResolveContext
 import org.gradle.api.provider.Provider
 import org.gradle.internal.Describables
+import org.gradle.internal.DisplayName
 import org.gradle.internal.state.Managed
+import org.gradle.util.TextUtil
 
 import java.util.concurrent.Callable
 
@@ -60,6 +62,10 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         property.set(null)
     }
 
+    protected void nullConvention(def property) {
+        property.convention(null)
+    }
+
     def "cannot get value when it has none"() {
         given:
         def property = propertyWithNoValue()
@@ -68,16 +74,16 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         property.get()
 
         then:
-        def t = thrown(IllegalStateException)
-        t.message == "No value has been specified for ${displayName}."
+        def t = thrown(MissingValueException)
+        t.message == "Cannot query the value of ${displayName} because it has no value available."
 
         when:
         property.attachDisplayName(Describables.of("<display-name>"))
         property.get()
 
         then:
-        def t2 = thrown(IllegalStateException)
-        t2.message == "No value has been specified for <display-name>."
+        def t2 = thrown(MissingValueException)
+        t2.message == "Cannot query the value of <display-name> because it has no value available."
 
         when:
         property.set(someValue())
@@ -110,7 +116,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
     }
 
     def "can set value using provider"() {
-        def provider = provider(someValue(), someValue(), someOtherValue(), someValue())
+        def provider = supplierWithValues(someValue(), someOtherValue(), someValue())
 
         given:
         def property = propertyWithNoValue()
@@ -124,7 +130,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         property.getOrNull() == null
     }
 
-    def "can set value using provider and chaining method"() {
+    def "can set value using provider with chaining method"() {
         given:
         def property = propertyWithNoValue()
         property.value(Providers.of(someValue()))
@@ -181,7 +187,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
     }
 
     def "can set untyped using provider"() {
-        def provider = provider(someValue(), someValue())
+        def provider = supplierWithValues(someValue(), someValue())
 
         given:
         def property = propertyWithNoValue()
@@ -206,8 +212,20 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         property.get() == someOtherValue()
     }
 
+    def "can use null convention value"() {
+        def property = propertyWithDefaultValue()
+        assert property.getOrNull() != someValue()
+
+        expect:
+        nullConvention(property)
+
+        !property.present
+        property.getOrNull() == null
+        property.getOrElse(someValue()) == someValue()
+    }
+
     def "convention provider is used before value has been set"() {
-        def provider = provider(someValue(), someOtherValue(), someValue())
+        def provider = supplierWithValues(someOtherValue(), someValue(), someValue())
         def property = propertyWithDefaultValue()
 
         when:
@@ -226,8 +244,42 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         property.get() == someOtherValue()
     }
 
+    def "property has no value when convention provider has no value"() {
+        def provider = supplierWithNoValue()
+        def property = propertyWithDefaultValue()
+
+        when:
+        property.convention(provider)
+
+        then:
+        !property.present
+
+        when:
+        property.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == "Cannot query the value of ${displayName} because it has no value available."
+    }
+
+    def "reports the source of convention provider when value is missing and source is known"() {
+        def provider = supplierWithNoValue(Describables.of("<source>"))
+        def property = propertyWithDefaultValue()
+
+        given:
+        property.convention(provider)
+
+        when:
+        property.get()
+
+        then:
+        def e = thrown(IllegalStateException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of ${displayName} because it has no value available.
+The value of this property is derived from: <source>""")
+    }
+
     def "can replace convention value before value has been set"() {
-        def provider = provider(someOtherValue())
+        def provider = supplierWithValues(someOtherValue())
         def property = propertyWithDefaultValue()
 
         when:
@@ -265,7 +317,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
     }
 
     def "convention provider ignored after value has been set"() {
-        def provider = broken()
+        def provider = brokenSupplier()
 
         def property = propertyWithDefaultValue()
         property.set(someValue())
@@ -291,7 +343,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
     }
 
     def "convention provider is used after value has been set to null"() {
-        def provider = provider(someOtherValue(), someOtherValue())
+        def provider = supplierWithValues(someOtherValue(), someOtherValue())
 
         def property = propertyWithDefaultValue()
         property.convention(provider)
@@ -314,7 +366,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
     }
 
     def "convention provider ignored after value has been set using provider with no value"() {
-        def provider = broken()
+        def provider = brokenSupplier()
 
         def property = propertyWithDefaultValue()
         property.set(Providers.notDefined())
@@ -427,8 +479,78 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         provider.get()
 
         then:
-        def e = thrown(IllegalStateException)
-        e.message == "No value has been specified for ${displayName}."
+        def e = thrown(MissingValueException)
+        e.message == "Cannot query the value of this provider because it has no value available."
+    }
+
+    def "reports the source of mapped provider when value is missing and source is known"() {
+        def transformer = Mock(Transformer)
+        def property = propertyWithNoValue()
+        property.attachDisplayName(Describables.of("<a>"))
+
+        def provider = property.map(transformer)
+
+        when:
+        provider.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from: <a>""")
+    }
+
+    def "reports the source of flat mapped provider when value is missing and source is known"() {
+        def transformer = Mock(Transformer)
+        def property = propertyWithNoValue()
+        property.attachDisplayName(Describables.of("<a>"))
+
+        def provider = property.flatMap(transformer)
+
+        when:
+        provider.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from: <a>""")
+    }
+
+    def "reports the source of flat mapped provider when mapped value is missing and its source is known"() {
+        def property = propertyWithNoValue()
+        property.set(someValue())
+
+        def other = propertyWithNoValue()
+        other.attachDisplayName(Describables.of("<a>"))
+
+        def provider = property.flatMap { other }
+
+        when:
+        provider.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from: <a>""")
+    }
+
+    def "reports the source of orElse provider when both values are missing and its source is known"() {
+        def property = propertyWithNoValue()
+        property.attachDisplayName(Describables.of("<a>"))
+
+        def other = propertyWithNoValue()
+        other.attachDisplayName(Describables.of("<b>"))
+
+        def provider = property.orElse(other)
+
+        when:
+        provider.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from:
+  - <a>
+  - <b>""")
     }
 
     def "can finalize value when no value defined"() {
@@ -758,11 +880,17 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
 
         when:
         def present = property.present
-        def result = property.getOrNull()
 
         then:
         !present
-        result == null
+        0 * _
+
+        when:
+        property.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == "Cannot query the value of this property because it has no value available."
         0 * _
     }
 
@@ -791,6 +919,31 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         and:
         !present
         result == null
+    }
+
+    def "finalized property with no value reports source of value when source is known"() {
+        def a = propertyWithNoValue()
+        a.attachDisplayName(Describables.of("<a>"))
+        def b = propertyWithNoValue()
+        b.attachDisplayName(Describables.of("<b>"))
+        def property = propertyWithNoValue()
+
+        given:
+        property.set(b)
+        b.set(a)
+
+        and:
+        property.finalizeValue()
+
+        when:
+        property.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this property because it has no value available.
+The value of this property is derived from:
+  - <b>
+  - <a>""")
     }
 
     def "can finalize value when already finalized"() {
@@ -1547,6 +1700,85 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         e2.message == 'The value for <display-name> cannot be changed any further.'
     }
 
+    def "reports the source of property value when value is missing and source is known"() {
+        given:
+        def a = propertyWithNoValue()
+        def b = propertyWithNoValue()
+        def c = propertyWithNoValue()
+        a.attachDisplayName(Describables.of("<a>"))
+        a.set(b)
+        b.set(c)
+
+        when:
+        a.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == "Cannot query the value of <a> because it has no value available."
+
+        when:
+        c.attachDisplayName(Describables.of("<c>"))
+        a.get()
+
+        then:
+        def e2 = thrown(MissingValueException)
+        e2.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of <a> because it has no value available.
+The value of this property is derived from: <c>""")
+
+        when:
+        b.attachDisplayName(Describables.of("<b>"))
+        a.get()
+
+        then:
+        def e3 = thrown(MissingValueException)
+        e3.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of <a> because it has no value available.
+The value of this property is derived from:
+  - <b>
+  - <c>""")
+    }
+
+    def "reports the source of mapped property value when value is missing and source is known"() {
+        given:
+        def a = propertyWithNoValue()
+        def b = propertyWithNoValue()
+        def c = propertyWithNoValue()
+        a.attachDisplayName(Describables.of("<a>"))
+        a.set(b.map { it })
+        b.set(c.map { it })
+        def provider = a.map { it }
+
+        when:
+        provider.get()
+
+        then:
+        def e = thrown(MissingValueException)
+        e.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from: <a>""")
+
+        when:
+        c.attachDisplayName(Describables.of("<c>"))
+        provider.get()
+
+        then:
+        def e2 = thrown(MissingValueException)
+        e2.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from:
+  - <a>
+  - <c>""")
+
+        when:
+        b.attachDisplayName(Describables.of("<b>"))
+        provider.get()
+
+        then:
+        def e3 = thrown(MissingValueException)
+        e3.message == TextUtil.toPlatformLineSeparators("""Cannot query the value of this provider because it has no value available.
+The value of this provider is derived from:
+  - <a>
+  - <b>
+  - <c>""")
+    }
+
     def "producer task for a property is not known by default"() {
         def context = Mock(TaskDependencyResolveContext)
         def property = propertyWithNoValue()
@@ -1578,7 +1810,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
 
     def "has build dependencies when value is provider with producer task"() {
         def producer = "some task"
-        def provider = withProducer(producer)
+        def provider = supplierWithProducer(producer)
         def context = Mock(TaskDependencyResolveContext)
         def property = propertyWithNoValue()
         property.set(provider)
@@ -1608,7 +1840,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
 
     def "has content producer when value is provider with content producer"() {
         def task = Mock(Task)
-        def provider = contentProducedByTask(task)
+        def provider = supplierWithProducer(task)
 
         def property = propertyWithNoValue()
         property.set(provider)
@@ -1650,7 +1882,7 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
 
     def "mapped value has value producer when value is provider with content producer"() {
         def task = Mock(Task)
-        def provider = contentProducedByTask(task)
+        def provider = supplierWithProducer(task)
 
         def property = propertyWithNoValue()
         property.set(provider)
@@ -1699,66 +1931,60 @@ abstract class PropertySpec<T> extends ProviderSpec<T> {
         assert producers == [task]
     }
 
-    ProviderInternal<T> broken() {
-        return new AbstractReadOnlyProvider<T>() {
-            @Override
-            Class<T> getType() {
-                return PropertySpec.this.type()
-            }
-
-            @Override
-            T getOrNull() {
-                throw new RuntimeException("broken!")
-            }
-        }
+    /**
+     * A dummy provider with no value.
+     */
+    ProviderInternal<T> supplierWithNoValue() {
+        return new NoValueProvider<T>(type(), null)
     }
 
     /**
-     * A provider that provides one of given values each time it is queried, in the order given.
+     * A dummy provider with no value and the given display name
      */
-    ProviderInternal<T> provider(T... values) {
-        return new TestProvider<T>(type(), values as List<T>, null)
+    ProviderInternal<T> supplierWithNoValue(DisplayName displayName) {
+        return new NoValueProvider<T>(type(), displayName)
     }
 
-    ProviderInternal<T> withProducer(Object value) {
-        return new TestProvider<T>(type(), [], value)
+    /**
+     * A dummy provider with no value and the given display name
+     */
+    ProviderInternal<T> supplierWithNoValue(Class type, DisplayName displayName) {
+        return new NoValueProvider<T>(type, displayName)
     }
 
-    ProviderInternal<T> contentProducedByTask(Task producer) {
-        return new TestProvider<T>(type(), [], producer)
+    /**
+     * A dummy provider that provides one of given values each time it is queried, in the order given.
+     */
+    ProviderInternal<T> supplierWithValues(T... values) {
+        return ProviderTestUtil.withValues(values)
     }
 
-    class TestProvider<T> extends AbstractReadOnlyProvider<T> {
-        final Class<T> type
-        final Iterator<T> values
-        final Object producer
+    ProviderInternal<T> supplierWithProducer(Object producer) {
+        return ProviderTestUtil.withProducer(type(), producer)
+    }
 
-        TestProvider(Class<T> type, List<T> values, Object producer) {
-            this.producer = producer
-            this.values = values.iterator()
+    class NoValueProvider<T> extends AbstractMinimalProvider<T> {
+        private final Class<T> type
+        private final DisplayName displayName
+
+        NoValueProvider(Class<T> type, DisplayName displayName) {
+            this.displayName = displayName
             this.type = type
         }
 
         @Override
-        void visitProducerTasks(Action<? super Task> visitor) {
-            if (producer != null) {
-                visitor.execute(producer)
-            }
+        Class<T> getType() {
+            return type
         }
 
         @Override
-        boolean maybeVisitBuildDependencies(TaskDependencyResolveContext context) {
-            if (producer != null) {
-                context.add(producer)
-                return true
-            } else {
-                return false
-            }
+        protected Value<? extends T> calculateOwnValue() {
+            return Value.missing()
         }
 
         @Override
-        T getOrNull() {
-            return values.hasNext() ? values.next() : null
+        Value<? extends T> calculateValue() {
+            return Value.missing().pushWhenMissing(displayName)
         }
     }
 

@@ -21,7 +21,6 @@ import org.gradle.api.artifacts.ComponentMetadataSupplier
 import org.gradle.api.artifacts.ComponentMetadataSupplierDetails
 import org.gradle.api.artifacts.ComponentMetadataVersionLister
 import org.gradle.api.artifacts.repositories.AuthenticationContainer
-import org.gradle.api.internal.DocumentationRegistry
 import org.gradle.api.internal.artifacts.DependencyManagementTestUtil
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.GradleModuleMetadataParser
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.parser.MetaDataParser
@@ -30,10 +29,10 @@ import org.gradle.api.internal.artifacts.repositories.resolver.MavenResolver
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransport
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransportFactory
 import org.gradle.api.internal.file.FileResolver
-import org.gradle.api.internal.filestore.ivy.ArtifactIdentifierFileStore
+import org.gradle.api.internal.filestore.DefaultArtifactIdentifierFileStore
 import org.gradle.api.model.ObjectFactory
 import org.gradle.internal.resource.ExternalResourceRepository
-import org.gradle.internal.resource.cached.ExternalResourceFileStore
+import org.gradle.internal.resource.cached.DefaultExternalResourceFileStore
 import org.gradle.internal.resource.local.FileResourceRepository
 import org.gradle.internal.resource.local.LocallyAvailableResourceFinder
 import org.gradle.util.SnapshotTestUtil
@@ -47,13 +46,13 @@ class DefaultMavenArtifactRepositoryTest extends Specification {
     final RepositoryTransportFactory transportFactory = Mock()
     final LocallyAvailableResourceFinder locallyAvailableResourceFinder = Mock()
     final ExternalResourceRepository resourceRepository = Mock()
-    final ArtifactIdentifierFileStore artifactIdentifierFileStore = Stub()
-    final ExternalResourceFileStore externalResourceFileStore = Stub()
+    final DefaultArtifactIdentifierFileStore artifactIdentifierFileStore = Stub()
+    final DefaultExternalResourceFileStore externalResourceFileStore = Stub()
     final MetaDataParser pomParser = Stub()
     final GradleModuleMetadataParser metadataParser = Stub()
     final AuthenticationContainer authenticationContainer = Stub()
     final MavenMutableModuleMetadataFactory mavenMetadataFactory = DependencyManagementTestUtil.mavenMetadataFactory()
-    final DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory = new DefaultUrlArtifactRepository.Factory(resolver, new DocumentationRegistry())
+    final DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory = new DefaultUrlArtifactRepository.Factory(resolver)
 
     final DefaultMavenArtifactRepository repository = new DefaultMavenArtifactRepository(
         resolver, transportFactory, locallyAvailableResourceFinder, TestUtil.instantiatorFactory(),

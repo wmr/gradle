@@ -175,14 +175,14 @@ class ModuleResolveState implements CandidateModule {
     /**
      * Changes the selected target component for this module.
      */
-    private void changeSelection(ComponentState newSelection) {
+    private void changeSelection(ComponentState newSelection, NodeState currentlyDeselecting) {
         assert this.selected != null;
         assert newSelection != null;
         assert this.selected != newSelection;
         assert newSelection.getModule() == this;
 
         // Remove any outgoing edges for the current selection
-        selected.removeOutgoingEdges();
+        selected.removeOutgoingEdges(currentlyDeselecting);
 
         this.selected = newSelection;
         this.replaced = false;
@@ -197,7 +197,7 @@ class ModuleResolveState implements CandidateModule {
      */
     public void clearSelection() {
         if (selected != null) {
-            selected.removeOutgoingEdges();
+            selected.removeOutgoingEdges(null);
         }
         for (ComponentState version : versions.values()) {
             if (version.isSelected()) {
@@ -285,19 +285,19 @@ class ModuleResolveState implements CandidateModule {
         }
     }
 
-    void removeSelector(SelectorState selector) {
+    void removeSelector(SelectorState selector, NodeState currentlyDeselecting) {
         selectors.remove(selector);
         boolean alreadyReused = selector.markForReuse();
         mergedConstraintAttributes = ImmutableAttributes.EMPTY;
         for (SelectorState selectorState : selectors) {
             mergedConstraintAttributes = appendAttributes(mergedConstraintAttributes, selectorState);
         }
-//        if (!alreadyReused && selectors.size() != 0) {
-//            maybeUpdateSelection();
-//        }
+        if (!alreadyReused && selectors.size() != 0) {
+            maybeUpdateSelection(currentlyDeselecting);
+        }
     }
 
-    public Iterable<SelectorState> getSelectors() {
+    public ModuleSelectors<SelectorState> getSelectors() {
         return selectors;
     }
 
@@ -377,8 +377,7 @@ class ModuleResolveState implements CandidateModule {
         pendingDependencies.addNode(node);
     }
 
-
-    public void maybeUpdateSelection() {
+    public void maybeUpdateSelection(NodeState currentlyDeselecting) {
         if (replaced) {
             // Never update selection for a replaced module
             return;
@@ -392,7 +391,7 @@ class ModuleResolveState implements CandidateModule {
         if (selected == null) {
             select(newSelected);
         } else if (newSelected != selected) {
-            changeSelection(newSelected);
+            changeSelection(newSelected, currentlyDeselecting);
         }
     }
 

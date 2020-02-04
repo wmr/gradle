@@ -37,13 +37,6 @@ public abstract class AbstractMappingProvider<OUT, IN> extends AbstractMinimalPr
         return type;
     }
 
-    public ProviderInternal<? extends IN> getProvider() {
-        return provider;
-    }
-
-    protected void beforeRead() {
-    }
-
     @Override
     public boolean isValueProducedByTask() {
         return provider.isValueProducedByTask();
@@ -55,33 +48,25 @@ public abstract class AbstractMappingProvider<OUT, IN> extends AbstractMinimalPr
     }
 
     @Override
+    public boolean maybeVisitBuildDependencies(TaskDependencyResolveContext context) {
+        return provider.maybeVisitBuildDependencies(context);
+    }
+
+    @Override
     public boolean isPresent() {
-        beforeRead();
         return provider.isPresent();
     }
 
     @Override
-    public OUT get() {
-        beforeRead();
-        return mapValue(provider.get());
-    }
-
-    @Override
-    public OUT getOrNull() {
-        beforeRead();
-        IN value = provider.getOrNull();
-        if (value != null) {
-            return mapValue(value);
+    protected Value<OUT> calculateOwnValue() {
+        Value<? extends IN> value = provider.calculateValue();
+        if (value.isMissing()) {
+            return value.asType();
         }
-        return null;
+        return Value.of(mapValue(value.get()));
     }
 
     protected abstract OUT mapValue(IN v);
-
-    @Override
-    public boolean maybeVisitBuildDependencies(TaskDependencyResolveContext context) {
-        return provider.maybeVisitBuildDependencies(context);
-    }
 
     @Override
     public String toString() {
