@@ -35,7 +35,7 @@ class MultiProjectContinuousIntegrationTest extends AbstractContinuousIntegratio
 
             project(':downstream') {
                 dependencies {
-                    compile project(":upstream")
+                    implementation project(":upstream")
                 }
             }
         """

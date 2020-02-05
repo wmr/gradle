@@ -89,12 +89,17 @@ class WatchServiceRegistrar implements FileWatcherListener {
     }
 
     void watch(FileSystemSubset fileSystemSubset) throws IOException {
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            throw UncheckedException.throwAsUncheckedException(e);
+        }
         lock.lock();
         try {
             LOG.debug("Begin - adding watches for {}", fileSystemSubset);
             final WatchPointsRegistry.Delta delta = watchPointsRegistry.appendFileSystemSubset(fileSystemSubset, getCurrentWatchPoints());
             Iterable<? extends File> startingWatchPoints = delta.getStartingWatchPoints();
-
             for (File dir : startingWatchPoints) {
                 LOG.debug("Begin - handling starting point {}", dir);
                 final Path dirPath = dir.toPath();
