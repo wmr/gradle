@@ -16,15 +16,12 @@
 package org.gradle.integtests.fixtures.executer;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import com.google.common.io.CharSource;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
 import org.gradle.api.JavaVersion;
-import org.gradle.api.UncheckedIOException;
 import org.gradle.api.internal.artifacts.ivyservice.ArtifactCachesProvider;
 import org.gradle.api.internal.initialization.DefaultClassLoaderScope;
 import org.gradle.api.logging.Logger;
@@ -59,6 +56,7 @@ import org.gradle.util.ClosureBackedAction;
 import org.gradle.util.CollectionUtils;
 import org.gradle.util.GradleVersion;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -74,7 +72,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.gradle.api.internal.artifacts.BaseRepositoryFactory.PLUGIN_PORTAL_OVERRIDE_URL_PROPERTY;
 import static org.gradle.integtests.fixtures.RepoScriptBlockUtil.gradlePluginRepositoryMirrorUrl;
@@ -82,7 +79,6 @@ import static org.gradle.integtests.fixtures.executer.AbstractGradleExecuter.Cli
 import static org.gradle.integtests.fixtures.executer.AbstractGradleExecuter.CliDaemonArgument.FOREGROUND;
 import static org.gradle.integtests.fixtures.executer.AbstractGradleExecuter.CliDaemonArgument.NOT_DEFINED;
 import static org.gradle.integtests.fixtures.executer.AbstractGradleExecuter.CliDaemonArgument.NO_DAEMON;
-import static org.gradle.integtests.fixtures.executer.OutputScrapingExecutionResult.STACK_TRACE_ELEMENT;
 import static org.gradle.internal.service.scopes.DefaultGradleUserHomeScopeServiceRegistry.REUSE_USER_HOME_SERVICES;
 import static org.gradle.util.CollectionUtils.collect;
 import static org.gradle.util.CollectionUtils.join;
@@ -1150,13 +1146,15 @@ public abstract class AbstractGradleExecuter implements GradleExecuter {
 
     protected Action<ExecutionResult> getResultAssertion() {
         return new Action<ExecutionResult>() {
-            private int expectedGenericDeprecationWarnings = AbstractGradleExecuter.this.expectedGenericDeprecationWarnings;
-            private final List<String> expectedDeprecationWarnings = new ArrayList<>(AbstractGradleExecuter.this.expectedDeprecationWarnings);
-            private final boolean expectStackTraces = !AbstractGradleExecuter.this.stackTraceChecksOn;
-            private final boolean checkDeprecations = AbstractGradleExecuter.this.checkDeprecations;
+            private final OutputValidator outputValidator = new OutputValidator(
+                AbstractGradleExecuter.this.expectedGenericDeprecationWarnings,
+                AbstractGradleExecuter.this.expectedDeprecationWarnings,
+                !AbstractGradleExecuter.this.stackTraceChecksOn,
+                AbstractGradleExecuter.this.checkDeprecations
+            );
 
             @Override
-            public void execute(ExecutionResult executionResult) {
+            public void execute(@Nonnull ExecutionResult executionResult) {
                 String normalizedOutput = executionResult.getNormalizedOutput();
                 String error = executionResult.getError();
                 boolean executionFailure = isExecutionFailure(executionResult);
@@ -1166,29 +1164,15 @@ public abstract class AbstractGradleExecuter implements GradleExecuter {
                     normalizedOutput = removeExceptionStackTraceForFailedExecution(normalizedOutput);
                 }
 
-                validate(normalizedOutput, "Standard output");
+                outputValidator.validate(normalizedOutput, "Standard output");
 
                 if (executionFailure) {
                     error = removeExceptionStackTraceForFailedExecution(error);
                 }
 
-                validate(error, "Standard error");
+                outputValidator.validate(error, "Standard error");
 
-                if (!expectedDeprecationWarnings.isEmpty()) {
-                    throw new AssertionError(String.format("Expected the following deprecation warnings:%n%s",
-                        expectedDeprecationWarnings.stream()
-                            .map(warning -> " - " + warning)
-                            .collect(Collectors.joining("\n"))));
-                }
-                if (expectedGenericDeprecationWarnings > 0) {
-                    throw new AssertionError(String.format("Expected %d more deprecation warnings", expectedGenericDeprecationWarnings));
-                }
-            }
-
-            private boolean isErrorOutEmpty(String error) {
-                //remove SLF4J error out like 'Class path contains multiple SLF4J bindings.'
-                //See: https://github.com/gradle/performance/issues/375#issuecomment-315103861
-                return Strings.isNullOrEmpty(error.replaceAll("(?m)^SLF4J: .*", "").trim());
+                outputValidator.assertExpectedDeprecationMessages();
             }
 
             private boolean isExecutionFailure(ExecutionResult executionResult) {
@@ -1202,62 +1186,6 @@ public abstract class AbstractGradleExecuter implements GradleExecuter {
                     text = text.substring(0, pos);
                 }
                 return text;
-            }
-
-            private void validate(String output, String displayName) {
-                List<String> lines;
-                try {
-                    lines = CharSource.wrap(output).readLines();
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-                int i = 0;
-                boolean insideVariantDescriptionBlock = false;
-                while (i < lines.size()) {
-                    String line = lines.get(i);
-                    if (insideVariantDescriptionBlock && line.contains("]")) {
-                        insideVariantDescriptionBlock = false;
-                    } else if (!insideVariantDescriptionBlock && line.contains("variant \"")) {
-                        insideVariantDescriptionBlock = true;
-                    }
-                    if (line.matches(".*use(s)? or override(s)? a deprecated API\\.")) {
-                        // A javac warning, ignore
-                        i++;
-                    } else if (line.matches(".*w: .* is deprecated\\..*")) {
-                        // A kotlinc warning, ignore
-                        i++;
-                    } else if (isDeprecationMessageInHelpDescription(line)) {
-                        i++;
-                    } else if (expectedDeprecationWarnings.remove(line)) {
-                        // Deprecation warning is expected
-                        i++;
-                        i = skipStackTrace(lines, i);
-                    } else if (line.matches(".*\\s+deprecated.*")) {
-                        if (checkDeprecations && expectedGenericDeprecationWarnings <= 0) {
-                            throw new AssertionError(String.format("%s line %d contains a deprecation warning: %s%n=====%n%s%n=====%n", displayName, i + 1, line, output));
-                        }
-                        expectedGenericDeprecationWarnings--;
-                        // skip over stack trace
-                        i++;
-                        i = skipStackTrace(lines, i);
-                    } else if (!expectStackTraces && !insideVariantDescriptionBlock && STACK_TRACE_ELEMENT.matcher(line).matches() && i < lines.size() - 1 && STACK_TRACE_ELEMENT.matcher(lines.get(i + 1)).matches()) {
-                        // 2 or more lines that look like stack trace elements
-                        throw new AssertionError(String.format("%s line %d contains an unexpected stack trace: %s%n=====%n%s%n=====%n", displayName, i + 1, line, output));
-                    } else {
-                        i++;
-                    }
-                }
-            }
-
-            private int skipStackTrace(List<String> lines, int i) {
-                while (i < lines.size() && STACK_TRACE_ELEMENT.matcher(lines.get(i)).matches()) {
-                    i++;
-                }
-                return i;
-            }
-
-            private boolean isDeprecationMessageInHelpDescription(String s) {
-                return s.matches(".*\\[deprecated.*]");
             }
         };
     }
