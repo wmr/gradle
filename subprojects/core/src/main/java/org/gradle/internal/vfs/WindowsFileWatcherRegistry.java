@@ -51,6 +51,7 @@ public class WindowsFileWatcherRegistry extends AbstractEventDrivenFileWatcherRe
             Set<String> directories = WatchRootUtil.resolveDirectoriesToWatch(snapshotHierarchy, watchFilter, mustWatchDirectories);
             Set<Path> watchRoots = WatchRootUtil.resolveRootsToWatch(directories);
             LOGGER.warn("Watching {} directory hierarchies to track changes between builds in {} directories", watchRoots.size(), directories.size());
+            LOGGER.warn("Watching directories {}", watchRoots);
             return new WindowsFileWatcherRegistry(watchRoots);
         }
     }

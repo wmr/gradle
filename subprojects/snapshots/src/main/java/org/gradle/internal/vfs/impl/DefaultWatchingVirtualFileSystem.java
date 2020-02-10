@@ -81,7 +81,7 @@ public class DefaultWatchingVirtualFileSystem extends AbstractDelegatingVirtualF
                 @Override
                 public void handleChange(FileWatcherRegistry.Type type, Path path) {
                     count.incrementAndGet();
-                    LOGGER.debug("Handling VFS change {} {}", type, path);
+                    LOGGER.warn("Handling VFS change {} {}", type, path);
                     update(Collections.singleton(path.toString()), () -> {});
                 }
 
