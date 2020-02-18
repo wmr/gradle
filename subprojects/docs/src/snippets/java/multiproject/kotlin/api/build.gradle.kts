@@ -58,16 +58,17 @@ artifacts {
 val lhs = org.apache.commons.math3.fraction.Fraction(1, 3);
 val bsc = org.gradle.buildsrc.BuildSrcClass()
 
-task("checkProjectDependency") {
+tasks.register<Copy>("checkProjectDependency") {
     val sharedJarTask = project(":shared").tasks.getByName<Jar>("jar")
+    val sharedJarArchiveFile = sharedJarTask.archiveFile
     dependsOn(sharedJarTask)
+    val cachedSharedJarDir = File(gradle.gradleUserHomeDir, "cache/multiproject/shared/jars")
+    copy {
+        from(sharedJarArchiveFile)
+        into(cachedSharedJarDir)
+    }
     doLast {
-        val cachedSharedJarDir = File(gradle.gradleUserHomeDir, "cache/multiproject/shared/jars")
-        copy {
-            from(sharedJarTask.archiveFile)
-            into(cachedSharedJarDir)
-        }
         val sharedJar = configurations.compileClasspath.get().first { file: File -> file.name.startsWith("shared") }
-        require(sharedJar.absolutePath == sharedJarTask.archiveFile.get().getAsFile().absolutePath)
+        require(sharedJar.absolutePath == sharedJarArchiveFile.get().getAsFile().absolutePath)
     }
 }
