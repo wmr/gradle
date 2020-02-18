@@ -25,7 +25,7 @@ class BuildInvocationDetailsIntegTest extends AbstractIntegrationSpec {
         when:
         buildFile << """
             tasks.register("timeTask", TimeConsumer)
-            
+
             class TimeConsumer extends DefaultTask {
                 private invocationDetails
 
@@ -33,18 +33,18 @@ class BuildInvocationDetailsIntegTest extends AbstractIntegrationSpec {
                 TimeConsumer(BuildInvocationDetails invocationDetails) {
                     this.invocationDetails = invocationDetails
                 }
-                
+
                 @TaskAction
                 def checkTime() {
                     def internalTimer = services.get($BuildStartedTime.name)
                     assert invocationDetails.buildStartedTime != 0
                     assert invocationDetails.buildStartedTime == internalTimer.startTime
-                    
+
                     println "startTime: " + invocationDetails.buildStartedTime
                 }
             }
-                    
-                    
+
+
         """
 
         succeeds("timeTask")

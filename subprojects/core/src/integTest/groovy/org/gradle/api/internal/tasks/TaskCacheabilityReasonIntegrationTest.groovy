@@ -56,7 +56,7 @@ class TaskCacheabilityReasonIntegrationTest extends AbstractIntegrationSpec impl
 
             @CacheableTask
             class Cacheable extends NotCacheable {}
-            
+
             class NoOutputs extends DefaultTask {
                 @TaskAction
                 void generate() {}
@@ -114,7 +114,7 @@ class TaskCacheabilityReasonIntegrationTest extends AbstractIntegrationSpec impl
                 @TaskAction
                 void generate() {}
             }
-            
+
             task noOutputs(type: CacheableNoOutputs) {}
         """
         when:
@@ -235,7 +235,7 @@ class TaskCacheabilityReasonIntegrationTest extends AbstractIntegrationSpec impl
                 @SkipWhenEmpty
                 FileCollection empty = project.layout.files()
             }
-            
+
             task cacheable(type: NoSources)
         """
         when:

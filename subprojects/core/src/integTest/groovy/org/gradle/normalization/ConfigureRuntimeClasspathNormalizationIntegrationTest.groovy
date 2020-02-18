@@ -105,7 +105,7 @@ class ConfigureRuntimeClasspathNormalizationIntegrationTest extends AbstractInte
     @UnsupportedWithInstantExecution(because = "can't use project in task action")
     def "runtime classpath normalization cannot be changed after first usage (using runtime API: #useRuntimeApi)"() {
         def project = new ProjectWithRuntimeClasspathNormalization(useRuntimeApi)
-        project.buildFile << """ 
+        project.buildFile << """
             task configureNormalization() {
                 dependsOn '${project.customTask}'
                 doLast {
@@ -191,12 +191,12 @@ class ConfigureRuntimeClasspathNormalizationIntegrationTest extends AbstractInte
                     class CustomTask extends DefaultTask {
                         @OutputFile File outputFile = new File(temporaryDir, "output.txt")
                         @Classpath FileCollection classpath = project.layout.files("classpath/dirEntry", "library.jar")
-    
+
                         @TaskAction void generate() {
                             outputFile.text = "done"
-                        } 
+                        }
                     }
-                    
+
                     task customTask(type: CustomTask)
                 """
             }

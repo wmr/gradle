@@ -228,7 +228,7 @@ project(':projectB') {
                         extendsFrom implementation
                     }
                 }
-                
+
                 dependencies {
                     compileOnly project(':projectA')
                 }

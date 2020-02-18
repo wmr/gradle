@@ -48,7 +48,7 @@ class DependencyHandlerExtensionAwareDSLSpec extends AbstractIntegrationSpec {
                     { 42 }
                 }
             }
-            
+
             tasks {
                 register("assertValue") {
                     doLast {

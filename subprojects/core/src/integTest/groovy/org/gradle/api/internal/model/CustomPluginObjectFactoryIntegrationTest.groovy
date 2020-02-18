@@ -23,73 +23,73 @@ class CustomPluginObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
     @ToBeFixedForInstantExecution(because = "creates project extensions in task actions")
     def "plugin can create unnamed instances of class using injected factory"() {
         buildFile << """
-            
+
             @groovy.transform.Canonical
             class CustomExtension {
                 NestedExtension nested
                 void nested(Action<? super NestedExtension> action) {
                     action.execute(nested)
-                }   
+                }
             }
-            
+
             class NestedExtension {
                 ObjectFactory factory
-                
+
                 @javax.inject.Inject
                 NestedExtension(ObjectFactory of) {
                     factory = of
                 }
-            
+
                 String name
-                
+
                 Person getRiker() {
                    factory.newInstance(Person, 'Riker')
                 }
-                
+
                 void checkRiker(Action<? super Person> check) {
                     check.execute(getRiker())
                 }
             }
-            
+
             class Person {
-                
+
                 @javax.inject.Inject
                 Person(String name) { this.name = name}
-            
+
                 String name
             }
-            
+
             class CustomPlugin implements Plugin<Project> {
                 ObjectFactory factory
-            
+
                 @javax.inject.Inject
                 CustomPlugin(ObjectFactory objects) {
                     factory = objects
                 }
-                
+
                 void apply(Project project) {
                     project.extensions.create('custom', CustomExtension, factory.newInstance(NestedExtension))
                 }
             }
-            
+
             apply plugin: CustomPlugin
-            
+
             custom {
                 nested {
                     name = 'foo'
                 }
             }
-            
+
             task checkFoo {
                 doLast {
-                    def nested = project.extensions.custom.nested 
+                    def nested = project.extensions.custom.nested
                     assert nested.name == 'foo'
                     nested.checkRiker {
                         assert name == 'Riker'
                     }
                 }
             }
-            
+
 """
 
         when:
@@ -98,7 +98,4 @@ class CustomPluginObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         then:
         noExceptionThrown()
     }
-
-
-
 }

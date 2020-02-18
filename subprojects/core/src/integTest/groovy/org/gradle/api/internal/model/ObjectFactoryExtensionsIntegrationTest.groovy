@@ -27,12 +27,12 @@ class ObjectFactoryExtensionsIntegrationTest extends AbstractIntegrationSpec {
                 this.value = value
             }
         }
-        
+
         class MyExtensible {}
 
         def myExtensible = project.objects.newInstance(MyExtensible)
         assert myExtensible instanceof ExtensionAware
-        
+
         myExtensible.extensions.create("thing", Thing, "bar")
         assert myExtensible.extensions.thing.value == "bar"
 """
@@ -48,14 +48,14 @@ class ObjectFactoryExtensionsIntegrationTest extends AbstractIntegrationSpec {
             Thing() {}
             Thing(String foo) {}
         }
-        
+
         class MyExtensible {}
-        
+
         task createExtension {
             doLast {
                 def myExtensible = objects.newInstance(MyExtensible)
                 assert myExtensible instanceof ExtensionAware
-                
+
                 myExtensible.extensions.create("thing", Thing)
             }
         }
@@ -69,19 +69,19 @@ class ObjectFactoryExtensionsIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class Thing {
                 String name
-                
+
                 Thing(String name) {
                     this.name = name
                 }
             }
-            
+
             class Outer {
                 Thing thing
 
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
             }
-            
+
             def outer = project.objects.newInstance(Outer)
             task createExtensionThing {
                 doLast {
@@ -89,7 +89,7 @@ class ObjectFactoryExtensionsIntegrationTest extends AbstractIntegrationSpec {
                     assert outer.extensions.extensionThing.name == "foo"
                 }
             }
-                    
+
             task createNestedThing {
                 doLast {
                     outer.objects.newInstance(Thing, "bar")

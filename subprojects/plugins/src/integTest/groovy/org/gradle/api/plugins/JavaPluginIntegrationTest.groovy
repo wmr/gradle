@@ -25,7 +25,7 @@ class JavaPluginIntegrationTest extends AbstractIntegrationSpec {
         given:
         buildFile << """
             apply plugin: 'java'
-            
+
             task expect {
                 doLast {
                     def component = services.get(${ComponentRegistry.canonicalName}).mainComponent
@@ -48,7 +48,7 @@ class JavaPluginIntegrationTest extends AbstractIntegrationSpec {
             tasks.named('jar').configure {
                 println "jar task created"
             }
-            
+
             task printArtifacts {
                 doLast {
                     configurations.runtime.artifacts.files.each { println it }

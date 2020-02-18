@@ -24,7 +24,7 @@ import spock.lang.Issue
 class JavaExecWithExecutableJarIntegrationTest extends AbstractIntegrationSpec {
 
     def setup() {
-        file("src/main/java/driver/Driver.java") <<"""
+        file("src/main/java/driver/Driver.java") << """
             package driver;
 
             import java.io.*;
@@ -51,7 +51,7 @@ class JavaExecWithExecutableJarIntegrationTest extends AbstractIntegrationSpec {
                 classpath = files(jar)
                 args "hello", "world"
             }
-            
+
             task runWithJavaExec {
                 dependsOn jar
                 doLast {

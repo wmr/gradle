@@ -41,7 +41,7 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
                 dependsOn 'compileJava'
                 commandLine '${fileToPath(Jvm.current().javaExecutable)}', '-cp', '${fileToPath(file('build/classes/java/main'))}', 'Block'
             }
-            
+
             task projectExecTask {
                 dependsOn 'compileJava'
                 doLast {
@@ -49,12 +49,12 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
                     assert result.exitValue == 0
                 }
             }
-            
+
             task javaExec(type: JavaExec) {
                 classpath = sourceSets.main.output
                 main = 'Block'
             }
-            
+
             task blockingCustomTask() {
                 doLast {
                     System.out.println("$START_UP_MESSAGE")
@@ -82,16 +82,16 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
         blockCode()
         buildFile << """
             apply plugin: 'java'
-            
+
             @CacheableTask
             class MyJavaExec extends JavaExec {
                 @Input
                 String getInput() { "input" }
-                
+
                 @OutputFile
                 File getOutputFile() { new java.io.File('${fileToPath(file('outputFile'))}') }
             }
-            
+
             task exec(type: MyJavaExec) {
                 classpath = sourceSets.main.output
                 main = 'Block'
@@ -119,12 +119,12 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
             import javax.inject.Inject
 
             apply plugin: 'java'
-            
+
             @CacheableTask
             abstract class MyExec extends DefaultTask {
                 @Input
                 String getInput() { "input" }
-                
+
                 @OutputFile
                 File getOutputFile() { new java.io.File('${fileToPath(file('outputFile'))}') }
 
@@ -142,7 +142,7 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
                     }
                 }
             }
-           
+
             task exec(type: MyExec) {
                 dependsOn 'compileJava'
             }
@@ -164,7 +164,7 @@ class CancellationIntegrationTest extends DaemonIntegrationSpec implements Direc
     }
 
     void blockCode() {
-        file('src/main/java/Block.java') << """ 
+        file('src/main/java/Block.java') << """
             import java.util.concurrent.CountDownLatch;
 
             public class Block {

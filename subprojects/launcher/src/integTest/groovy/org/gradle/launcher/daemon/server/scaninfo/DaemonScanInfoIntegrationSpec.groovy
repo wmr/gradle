@@ -262,7 +262,7 @@ class DaemonScanInfoIntegrationSpec extends DaemonIntegrationSpec {
         import org.gradle.launcher.daemon.server.expiry.*
         import java.util.concurrent.CountDownLatch
         import java.util.concurrent.TimeUnit
-            
+
         def latch = new CountDownLatch(1)
         """
     }

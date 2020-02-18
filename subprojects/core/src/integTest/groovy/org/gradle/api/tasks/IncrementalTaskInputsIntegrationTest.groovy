@@ -27,13 +27,13 @@ class IncrementalTaskInputsIntegrationTest extends AbstractIncrementalTasksInteg
         """
             void execute(IncrementalTaskInputs inputs) {
                 assert !(inputs instanceof ExtensionAware)
-    
+
                 if (project.hasProperty('forceFail')) {
                     throw new RuntimeException('failed')
                 }
-    
+
                 incrementalExecution = inputs.incremental
-    
+
                 inputs.outOfDate { change ->
                     if (change.added) {
                         addedFiles << change.file
@@ -41,15 +41,15 @@ class IncrementalTaskInputsIntegrationTest extends AbstractIncrementalTasksInteg
                         modifiedFiles << change.file
                     }
                 }
-    
+
                 inputs.removed { change ->
                     removedFiles << change.file
                 }
-    
+
                 if (!inputs.incremental) {
                     createOutputsNonIncremental()
                 }
-                
+
                 touchOutputs()
             }
         """
@@ -87,7 +87,7 @@ class IncrementalTaskInputsIntegrationTest extends AbstractIncrementalTasksInteg
                 File input
                 @OutputFile
                 File output
-                
+
                 @TaskAction
                 void doStuff(IncrementalTaskInputs inputs) {
                     def out = []
@@ -97,12 +97,12 @@ class IncrementalTaskInputsIntegrationTest extends AbstractIncrementalTasksInteg
                     assert out.contains('child')
                     output.text = out.join('\\n')
                 }
-            }           
-            
+            }
+
             task myTask(type: MyTask) {
                 input = mkdir(inputDir)
                 output = file("build/output.txt")
-            }          
+            }
         """
         String myTask = ':myTask'
 

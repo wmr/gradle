@@ -31,7 +31,7 @@ class DeleteTaskIntegrationTest extends AbstractIntegrationSpec {
             assert file('foo').exists()
             assert file('bar').exists()
             assert file('baz').exists()
-            
+
             task clean(type: Delete) {
                 delete 'foo'
                 delete file('bar')
@@ -53,12 +53,12 @@ class DeleteTaskIntegrationTest extends AbstractIntegrationSpec {
             import org.gradle.api.internal.tasks.properties.PropertyVisitor
             import org.gradle.api.internal.tasks.properties.PropertyWalker
             import org.gradle.api.internal.tasks.TaskPropertyUtils
-            
+
             task clean(type: Delete) {
                 delete 'foo'
                 delete file('bar')
                 delete files('baz')
-                
+
 
                 doLast {
                     def destroyablePaths = []
@@ -68,11 +68,11 @@ class DeleteTaskIntegrationTest extends AbstractIntegrationSpec {
                             destroyablePaths << value
                         }
                     })
-                    def destroyableFiles = files(destroyablePaths).files 
+                    def destroyableFiles = files(destroyablePaths).files
                     assert destroyableFiles.size() == 3 &&
                         destroyableFiles.containsAll([
-                            file('foo'), 
-                            file('bar'), 
+                            file('foo'),
+                            file('bar'),
                             file('baz')
                         ])
                 }

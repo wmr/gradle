@@ -672,13 +672,13 @@ task someTask(dependsOn: [someDep, someOtherDep])
                 destroyables.register(mutatedFile)
                 doLast {
                     assert mutatedFile.delete()
-                }                                
+                }
             }
             def producer = tasks.register("producer") {
                 outputs.file(mutatedFile)
                 doLast {
                     mutatedFile.text = "created"
-                }                                
+                }
             }
             def failingConsumer = tasks.register("failingConsumer") {
                 dependsOn(producer)
@@ -734,8 +734,8 @@ task someTask(dependsOn: [someDep, someOtherDep])
     def "detects a cycle with a task that mustRunAfter itself as finalizer of another task"() {
         buildFile << """
             def finalizer = tasks.register("finalizer")
-            tasks.named("finalizer").configure { 
-                mustRunAfter(finalizer) 
+            tasks.named("finalizer").configure {
+                mustRunAfter(finalizer)
             }
             task myTask {
                 finalizedBy finalizer

@@ -178,7 +178,7 @@ class TaskInputFilePropertiesIntegrationTest extends AbstractIntegrationSpec {
             class FooTask extends DefaultTask {
                @InputFiles
                FileCollection bar
-               
+
                @TaskAction
                def go() {
                }

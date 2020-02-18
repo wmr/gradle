@@ -40,14 +40,14 @@ class FileDependencyResolveIntegrationTest extends AbstractDependencyResolutionT
                     } 
                 }
             }
-            dependencies { 
-                compile project(path: ':sub', configuration: 'compile') 
-                compile files('main.jar') { builtBy jar } 
+            dependencies {
+                compile project(path: ':sub', configuration: 'compile')
+                compile files('main.jar') { builtBy jar }
             }
 '''
         file("sub/build.gradle") << '''
-            dependencies { 
-                compile files('sub.jar') { builtBy jar } 
+            dependencies {
+                compile files('sub.jar') { builtBy jar }
             }
 '''
 
@@ -80,17 +80,17 @@ class FileDependencyResolveIntegrationTest extends AbstractDependencyResolutionT
                     } 
                 }
             }
-            dependencies { 
-                compile project(path: ':sub', configuration: 'compile') 
-                compile fileTree(dir: projectDir, include: '*.jar', builtBy: [jar]) 
+            dependencies {
+                compile project(path: ':sub', configuration: 'compile')
+                compile fileTree(dir: projectDir, include: '*.jar', builtBy: [jar])
             }
-            
+
             // Nothing built yet, result should be empty
             assert configurations.compile.files.empty
 '''
         file("sub/build.gradle") << '''
-            dependencies { 
-                compile fileTree(dir: projectDir, include: '*.jar', builtBy: [jar]) 
+            dependencies {
+                compile fileTree(dir: projectDir, include: '*.jar', builtBy: [jar])
             }
 '''
 
@@ -121,12 +121,12 @@ class FileDependencyResolveIntegrationTest extends AbstractDependencyResolutionT
                 println "FILES REQUESTED"
                 [jarFile]
             }
-            
+
             configurations { compile }
-            dependencies { 
+            dependencies {
                 compile files(libFiles)
             }
-            
+
             task checkFiles {
                 doLast {
                     assert configurations.compile.files == [jarFile] as Set
@@ -149,20 +149,20 @@ class FileDependencyResolveIntegrationTest extends AbstractDependencyResolutionT
                 task jar {
                     def outputFile = file("${project.name}.jar")
                     outputs.file outputFile
-                    doLast { 
-                        outputFile.text = 'content' 
-                    } 
+                    doLast {
+                        outputFile.text = 'content'
+                    }
                 }
             }
-            dependencies { 
-                compile project(path: ':sub', configuration: 'compile') 
+            dependencies {
+                compile project(path: ':sub', configuration: 'compile')
                 compile jar.outputs.files
             }
 '''
         file("sub/build.gradle") << '''
-            dependencies { 
+            dependencies {
                 compile jar.outputs.files
-                compile project(path: ':', configuration: 'compile') 
+                compile project(path: ':', configuration: 'compile')
             }
 '''
 
@@ -195,18 +195,18 @@ class FileDependencyResolveIntegrationTest extends AbstractDependencyResolutionT
                 task jar {
                     def outputFile = file("${project.name}.jar")
                     outputs.file outputFile
-                    doLast { 
-                        outputFile.text = 'content' 
-                    } 
+                    doLast {
+                        outputFile.text = 'content'
+                    }
                 }
             }
-            dependencies { 
+            dependencies {
                 compile project(path: ':sub', configuration: 'compile', transitive: false)
                 compile jar.outputs.files
             }
 '''
         file("sub/build.gradle") << '''
-            dependencies { 
+            dependencies {
                 compile jar.outputs.files
             }
 '''

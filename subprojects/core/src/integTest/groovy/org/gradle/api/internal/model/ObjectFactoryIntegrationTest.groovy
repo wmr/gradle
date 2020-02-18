@@ -24,41 +24,41 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
             class Thing {
                 @javax.inject.Inject
                 Thing(String name) { this.name = name }
-                
+
                 String name
             }
-            
+
             class CustomPlugin implements Plugin<Project> {
                 ObjectFactory objects
-                
+
                 @javax.inject.Inject
                 CustomPlugin(ObjectFactory objects) {
                     this.objects = objects
                 }
-                
+
                 void apply(Project project) {
-                    project.tasks.create('thing1', CustomTask) { 
+                    project.tasks.create('thing1', CustomTask) {
                         thing = objects.newInstance(Thing, 'thing1')
                     }
-                    project.tasks.create('thing2', CustomTask) { 
+                    project.tasks.create('thing2', CustomTask) {
                         thing = project.objects.newInstance(Thing, 'thing2')
                     }
                 }
             }
-            
+
             class CustomTask extends DefaultTask {
                 @Internal
                 Thing thing
-                
+
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
-                
+
                 @TaskAction
                 void run() {
-                    println thing.toString() + ": " + objects.newInstance(Thing, thing.name)    
+                    println thing.toString() + ": " + objects.newInstance(Thing, thing.name)
                 }
             }
-            
+
             apply plugin: CustomPlugin
 """
 
@@ -76,7 +76,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
                 String getProp()
                 void setProp(String value)
             }
-            
+
             def t = objects.newInstance(Thing)
             assert t.prop == null
             t.prop = "value"
@@ -92,7 +92,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
             interface Thing {
                 ConfigurableFileCollection getFiles()
             }
-            
+
             def t = objects.newInstance(Thing)
             assert t.files.toString() == "file collection"
             assert t.files.files.empty
@@ -109,7 +109,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
             interface Thing {
                 Property<String> getValue()
             }
-            
+
             def t = objects.newInstance(Thing)
             assert t.value.toString() == "property 'value'"
             assert !t.value.present
@@ -125,11 +125,11 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             abstract class Thing {
                 String otherProp
-                
+
                 abstract String getProp()
                 abstract void setProp(String value)
             }
-            
+
             def t = objects.newInstance(Thing)
             assert t.prop == null
             assert t.otherProp == null
@@ -146,7 +146,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
             interface Thing {
                 String getProp()
             }
-            
+
             objects.newInstance(Thing)
 """
 
@@ -161,22 +161,22 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class Thing1 {
                 final Property<String> name
-                
+
                 @javax.inject.Inject
                 Thing1(ObjectFactory objects) { this.name = objects.property(String) }
             }
-            
+
             class Thing2 {
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
-                
+
                 String getName() {
                     def t = objects.newInstance(Thing1)
                     t.name.set("name")
                     t.name.get()
                 }
             }
-            
+
             assert objects.newInstance(Thing2).name == "name"
 """
 
@@ -188,16 +188,16 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class Thing1 {
                 final Property<String> name
-                
+
                 Thing1() { this.name = objects.property(String) }
 
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
             }
-            
+
             class Thing2 {
                 String name
-                
+
                 Thing2() {
                     def t = objects.newInstance(Thing1)
                     t.name.set("name")
@@ -207,7 +207,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
             }
-            
+
             assert objects.newInstance(Thing2).name == "name"
 """
 
@@ -219,16 +219,16 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         buildFile << """
             class Thing1 {
                 final Property<String> name
-                
+
                 Thing1() { this.name = objects.property(String) }
 
                 @javax.inject.Inject
                 ObjectFactory getObjects() { null }
             }
-            
+
             abstract class Thing2 {
                 String name
-                
+
                 Thing2() {
                     def t = objects.newInstance(Thing1)
                     t.name.set("name")
@@ -238,7 +238,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
                 @javax.inject.Inject
                 abstract ObjectFactory getObjects()
             }
-            
+
             assert objects.newInstance(Thing2).name == "name"
 """
 
@@ -252,7 +252,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
                 @javax.inject.Inject
                 ObjectFactory getObjects()
             }
-            
+
             assert objects.newInstance(Thing).objects != null
 """
 
@@ -263,32 +263,32 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
     def "can create nested DSL elements using injected ObjectFactory"() {
         buildFile << """
             class Thing {
-                String name   
+                String name
             }
-            
+
             class Thing2 {
                 Thing thing
-                
+
                 @javax.inject.Inject
                 Thing2(ObjectFactory factory) {
                     thing = factory.newInstance(Thing)
                 }
-                
+
                 void thing(Action<? super Thing> action) { action.execute(thing) }
             }
-            
+
             class Thing3 {
                 Thing2 thing
-                
+
                 Thing3(ObjectFactory factory) {
                     thing = factory.newInstance(Thing2)
                 }
-                
+
                 void thing(Action<? super Thing2> action) { action.execute(thing) }
             }
-            
+
             project.extensions.create('thing', Thing3)
-            
+
             thing {
                 thing {
                     thing {
@@ -306,32 +306,32 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
     def "DSL elements created using injected ObjectFactory can be extended and those extensions can receive services"() {
         buildFile << """
             class Thing {
-                String name   
+                String name
 
                 @javax.inject.Inject
                 Thing(ObjectFactory factory) { assert factory != null }
             }
-            
+
             class Thing2 {
             }
-            
+
             class Thing3 {
                 Thing2 thing
-                
+
                 Thing3(ObjectFactory factory) {
                     thing = factory.newInstance(Thing2)
                 }
-                
+
                 void thing(Action<? super Thing2> action) { action.execute(thing) }
             }
-            
+
             project.extensions.create('thing', Thing3)
-            
+
             thing.extensions.create('thing2', Thing)
             thing.thing.extensions.create('thing2', Thing)
             thing.thing.thing2.extensions.create('thing2', Thing)
             thing.thing2.extensions.create('thing2', Thing)
-            
+
             thing {
                 thing {
                     thing2 {
@@ -344,7 +344,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
                     }
                 }
             }
-            
+
             assert thing.thing.thing2.name == 'thing'
             assert thing.thing2.thing2.name == 'thing'
 """
@@ -357,7 +357,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         given:
         buildFile << """
         class Thing {}
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing, 'bogus')
@@ -377,7 +377,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         given:
         buildFile << """
         interface Thing {}
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing, 'bogus')
@@ -396,7 +396,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
     def "object creation fails with ObjectInstantiationException given non-static inner class"() {
         given:
         buildFile << """
-        class Things { 
+        class Things {
             class Thing {
             }
         }
@@ -420,12 +420,12 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         given:
         buildFile << """
         interface Unknown { }
-        
+
         class Thing {
             @javax.inject.Inject
             Thing(Unknown u) { }
         }
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing)
@@ -447,7 +447,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         class Thing {
             Thing() { throw new GradleException("broken") }
         }
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing)
@@ -469,7 +469,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         class Thing {
             Thing(ObjectFactory factory) { }
         }
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing)
@@ -492,7 +492,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
             Thing() {}
             Thing(String foo) {}
         }
-        
+
         task fail {
             doLast {
                 objects.newInstance(Thing)
