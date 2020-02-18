@@ -154,18 +154,26 @@ class TaskCacheabilityReasonIntegrationTest extends AbstractIntegrationSpec impl
     @Unroll
     def "cacheability for a task with @#annotation file tree outputs is NON_CACHEABLE_TREE_OUTPUT"() {
         buildFile << """
+            import javax.inject.Inject
+
             @CacheableTask
-            class PluralOutputs extends DefaultTask {
+            abstract class PluralOutputs extends DefaultTask {
                 @$annotation
                 def outputFiles = [project.fileTree('build/some-dir')]
-                
+
+                @Inject
+                abstract ProjectLayout getLayout()
+
+                @Inject
+                abstract FileSystemOperations getFs()
+
                 @TaskAction
                 void generate() {
-                    project.mkdir("build/some-dir")
-                    project.file("build/some-dir/output.txt").text = "output"
+                    fs.mkdir(layout.buildDirectory.dir("some-dir").get())
+                    layout.buildDirectory.file("some-dir/output.txt").get().asFile.text = "output"
                 }
             }
-            
+
             task pluralOutputs(type: PluralOutputs)
         """
         when:
