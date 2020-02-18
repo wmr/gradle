@@ -26,18 +26,12 @@ import static org.junit.Assert.assertThat
 class WrapperProjectIntegrationTest extends AbstractWrapperIntegrationSpec {
     def setup() {
         file("build.gradle") << """
-    task hello {
-        doLast {
-            println 'hello'
-        }
-    }
-
-    task echoProperty {
-        doLast {
-            println "fooD=" + project.properties["fooD"]
-        }
-    }
-"""
+            task echoProperty {
+                doLast {
+                    println "fooD=" + project.properties["fooD"]
+                }
+            }
+        """
     }
 
     void "has non-zero exit code on build failure"() {
