@@ -17,6 +17,7 @@
 package org.gradle.integtests.resolve
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 
 class DependencyHandlerExtensionAwareDSLSpec extends AbstractIntegrationSpec {
     def "can type-safely use DependencyHandler ExtensionAware with the Groovy DSL"() {
@@ -36,6 +37,7 @@ class DependencyHandlerExtensionAwareDSLSpec extends AbstractIntegrationSpec {
         succeeds("assertValue")
     }
 
+    @ToBeFixedForInstantExecution(because = "project in task action to get the dependency handler")
     def "can type-safely use DependencyHandler ExtensionAware with the Kotlin DSL"() {
         // Required because of: https://github.com/gradle/gradle/issues/7413
         executer.requireGradleDistribution()

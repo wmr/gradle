@@ -53,6 +53,7 @@ class CachedTaskIntegrationTest extends AbstractIntegrationSpec implements Direc
         metadata.contains("userName=")
     }
 
+    @ToBeFixedForInstantExecution(because = "query project properties in task action")
     def "task is cacheable after previous failure"() {
         buildFile << """
             task foo {

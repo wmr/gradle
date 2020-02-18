@@ -17,6 +17,7 @@
 package org.gradle.api.tasks.console
 
 import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
+import org.gradle.integtests.fixtures.UnsupportedWithInstantExecution
 import org.gradle.integtests.fixtures.console.AbstractConsoleGroupedTaskFunctionalTest
 import spock.lang.Issue
 import spock.util.environment.OperatingSystem
@@ -26,6 +27,7 @@ abstract class AbstractExecOutputIntegrationTest extends AbstractConsoleGroupedT
     private static final String EXPECTED_OUTPUT = "Hello, World!"
     private static final String EXPECTED_ERROR = "Goodbye, World!"
 
+    @UnsupportedWithInstantExecution(because = "uses project.javaexec in task action")
     def "Project.javaexec output is grouped with its task output"() {
         given:
         generateMainJavaFileEchoing(EXPECTED_OUTPUT, EXPECTED_ERROR)
@@ -79,6 +81,7 @@ abstract class AbstractExecOutputIntegrationTest extends AbstractConsoleGroupedT
         errorOutput.contains(EXPECTED_ERROR)
     }
 
+    @UnsupportedWithInstantExecution(because = "uses project.exec in task action")
     def "Project.exec output is grouped with its task output"() {
         given:
         buildFile << """

@@ -18,6 +18,7 @@ package org.gradle.api.tasks
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
+import org.gradle.integtests.fixtures.UnsupportedWithInstantExecution
 import spock.lang.Issue
 
 class JavaExecWithExecutableJarIntegrationTest extends AbstractIntegrationSpec {
@@ -83,7 +84,8 @@ class JavaExecWithExecutableJarIntegrationTest extends AbstractIntegrationSpec {
     }
 
     @Issue("https://github.com/gradle/gradle/issues/1346")
-    def "can run javaexec with executable jar"() {
+    @UnsupportedWithInstantExecution(because = "project not available")
+    def "can run project.javaexec with executable jar"() {
 
         buildFile << """
             jar {

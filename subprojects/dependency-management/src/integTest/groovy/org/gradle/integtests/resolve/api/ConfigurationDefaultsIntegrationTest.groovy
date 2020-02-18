@@ -89,6 +89,7 @@ configurations.conf.defaultDependencies { deps ->
     }
 
     @Issue("gradle/gradle#3908")
+    @ToBeFixedForInstantExecution(because = "using project.dependencies in dependency resolution action")
     def "defaultDependencies action is executed only when configuration participates in resolution"() {
         buildFile << """
 configurations {
@@ -226,6 +227,7 @@ include 'consumer', 'producer'
         succeeds ":resolve"
     }
 
+    @ToBeFixedForInstantExecution(because = "using project.dependencies in dependency resolution action")
     def "can use beforeResolve to specify default dependencies"() {
         buildFile << """
 configurations.conf.incoming.beforeResolve {
@@ -245,6 +247,7 @@ configurations.conf.incoming.beforeResolve {
         succeeds "checkExplicit"
     }
 
+    @ToBeFixedForInstantExecution(because = "using project.dependencies in dependency resolution action")
     def "fails if beforeResolve used to add dependencies to observed configuration"() {
         buildFile << """
 configurations.conf.incoming.beforeResolve {

@@ -19,6 +19,7 @@ import groovy.transform.NotYetImplemented
 import org.gradle.api.JavaVersion
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.FluidDependenciesResolveRunner
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import org.gradle.integtests.fixtures.resolve.ResolveTestFixture
 import org.junit.runner.RunWith
 import spock.lang.Issue
@@ -580,6 +581,7 @@ project('c') {
         file("b/build/copied/a-1.0.zip").exists()
     }
 
+    @ToBeFixedForInstantExecution(because = "accesses configurations through project and project(:path)")
     def "resolving configuration with project dependency marks dependency's configuration as observed"() {
         settingsFile << "include 'api'; include 'impl'"
 
