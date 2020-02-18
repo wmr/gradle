@@ -63,9 +63,9 @@ class CodeNarcPluginIntegrationTest extends WellBehavedPluginTest {
             }
             task assertTaskForEachSourceSet {
                 doLast {
-                    assertTaskConfiguration('codenarcMain', project.sourceSets.main)
-                    assertTaskConfiguration('codenarcTest', project.sourceSets.test)
-                    assertTaskConfiguration('codenarcOther', project.sourceSets.other)
+                    assertTaskConfiguration('codenarcMain', sourceSets.main)
+                    assertTaskConfiguration('codenarcTest', sourceSets.test)
+                    assertTaskConfiguration('codenarcOther', sourceSets.other)
                 }
             }
         '''.stripIndent()
@@ -132,9 +132,9 @@ class CodeNarcPluginIntegrationTest extends WellBehavedPluginTest {
             }
             task assertHasCustomizedSettings {
                 doLast {
-                    hasCustomizedSettings('codenarcMain', project.sourceSets.main)
-                    hasCustomizedSettings('codenarcTest', project.sourceSets.test)
-                    hasCustomizedSettings('codenarcOther', project.sourceSets.other)
+                    hasCustomizedSettings('codenarcMain', sourceSets.main)
+                    hasCustomizedSettings('codenarcTest', sourceSets.test)
+                    hasCustomizedSettings('codenarcOther', sourceSets.other)
                 }
             }
         '''.stripIndent()
@@ -176,9 +176,9 @@ class CodeNarcPluginIntegrationTest extends WellBehavedPluginTest {
             }
             task assertCodeNarcConfiguration {
                 doLast {
-                    assert project.codenarc.configFile == project.file("codenarc-config") // computed property
-                    assert project.tasks.codenarcMain.configFile == project.file("codenarc-config")
-                    assert project.tasks.codenarcTest.configFile == project.file("codenarc-config")
+                    assert codenarc.configFile == file("codenarc-config") // computed property
+                    assert tasks.codenarcMain.configFile == file("codenarc-config")
+                    assert tasks.codenarcTest.configFile == file("codenarc-config")
                 }
             }
         '''.stripIndent()

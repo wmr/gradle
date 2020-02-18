@@ -66,12 +66,12 @@ class ExecIntegrationTest extends AbstractIntegrationSpec {
 
             ${
             injectedTaskActionTask('javaexecInjectedTaskAction', '''
-                File testFile = project.file("${project.buildDir}/$name")
+                File testFile = project.file("${buildDir}/$name")
                 execOperations.javaexec {
                     assert !(it instanceof ExtensionAware)
-                    it.classpath(project.sourceSets['main'].output.classesDirs)
+                    it.classpath(sourceSets['main'].output.classesDirs)
                     it.main 'org.gradle.TestMain'
-                    it.args project.projectDir, testFile
+                    it.args projectDir, testFile
                 }
                 assert testFile.exists()
             ''')
@@ -123,11 +123,11 @@ class ExecIntegrationTest extends AbstractIntegrationSpec {
 
             ${
             injectedTaskActionTask('execInjectedTaskAction', '''
-                File testFile = project.file("${project.buildDir}/$name")
+                File testFile = project.file("${buildDir}/$name")
                 execOperations.exec {
                     assert !(it instanceof ExtensionAware)
                     it.executable Jvm.current().getJavaExecutable()
-                    it.args '-cp', project.sourceSets['main'].runtimeClasspath.asPath, 'org.gradle.TestMain', project.projectDir, testFile
+                    it.args '-cp', sourceSets['main'].runtimeClasspath.asPath, 'org.gradle.TestMain', projectDir, testFile
                 }
                 assert testFile.exists()
             ''')

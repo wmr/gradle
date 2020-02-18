@@ -151,7 +151,7 @@ import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry
 task("dumpKotlinBuildScriptModelClassPath") {
     doLast {
         val modelName = KotlinBuildScriptModel::class.qualifiedName
-        val builderRegistry = (project as ProjectInternal).services[ToolingModelBuilderRegistry::class.java]
+        val builderRegistry = services[ToolingModelBuilderRegistry::class.java]
         val builder = builderRegistry.getBuilder(modelName)
         val model = builder.buildAll(modelName, project) as KotlinBuildScriptModel
         if (model.classPath.any { it.name.startsWith("gradle-kotlin-dsl") }) {

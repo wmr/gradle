@@ -411,15 +411,15 @@ assert 'overridden value' == global
                 }
             }
 
-            project.extensions.create("l1", Extension, "l1")
-            project.l1.extensions.create("l2", Extension, "l2")
-            project.l1.l2.extensions.create("l3", Extension, "l3")
+            def l1 = project.extensions.create("l1", Extension, "l1")
+            def l2 = project.l1.extensions.create("l2", Extension, "l2")
+            def l3 = project.l1.l2.extensions.create("l3", Extension, "l3")
 
             task test {
                 doLast {
-                    assert project.l1.name == "l1"
-                    assert project.l1.l2.name == "l2"
-                    assert project.l1.l2.l3.name == "l3"
+                    assert l1.name == "l1"
+                    assert l1.l2.name == "l2"
+                    assert l1.l2.l3.name == "l3"
                 }
             }
         '''

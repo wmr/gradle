@@ -54,10 +54,10 @@ class JacocoPluginIntegrationTest extends AbstractIntegrationSpec {
         buildFile << '''
             task doCheck {
                 doLast {
-                    assert project.test.extensions.getByType(JacocoTaskExtension) != null
-                    assert project.jacocoTestReport instanceof JacocoReport
-                    assert project.jacocoTestReport.sourceDirectories*.absolutePath == project.layout.files("src/main/java")*.absolutePath
-                    assert project.jacocoTestReport.classDirectories*.absolutePath == project.sourceSets.main.output*.absolutePath
+                    assert test.extensions.getByType(JacocoTaskExtension) != null
+                    assert jacocoTestReport instanceof JacocoReport
+                    assert jacocoTestReport.sourceDirectories*.absolutePath == layout.files("src/main/java")*.absolutePath
+                    assert jacocoTestReport.classDirectories*.absolutePath == sourceSets.main.output*.absolutePath
                 }
             }
         '''.stripIndent()

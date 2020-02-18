@@ -177,7 +177,7 @@ class DaemonScanInfoIntegrationSpec extends DaemonIntegrationSpec {
         """
     task $name {
         doLast {
-            DaemonScanInfo info = project.getServices().get(DaemonScanInfo)
+            DaemonScanInfo info = services.get(DaemonScanInfo)
             ${assertInfo(buildCount, daemonCount, singleUse)}
         }
     }

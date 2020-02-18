@@ -360,7 +360,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing, 'bogus') 
+                objects.newInstance(Thing, 'bogus')
             }
         }
 """
@@ -380,7 +380,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing, 'bogus') 
+                objects.newInstance(Thing, 'bogus')
             }
         }
 """
@@ -403,7 +403,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
 
         task fail {
             doLast {
-                project.objects.newInstance(Things.Thing, 'bogus') 
+                objects.newInstance(Things.Thing, 'bogus')
             }
         }
 """
@@ -428,7 +428,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing) 
+                objects.newInstance(Thing)
             }
         }
 """
@@ -450,7 +450,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing) 
+                objects.newInstance(Thing)
             }
         }
 """
@@ -472,7 +472,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing) 
+                objects.newInstance(Thing)
             }
         }
 """
@@ -495,7 +495,7 @@ class ObjectFactoryIntegrationTest extends AbstractIntegrationSpec {
         
         task fail {
             doLast {
-                project.objects.newInstance(Thing) 
+                objects.newInstance(Thing)
             }
         }
 """

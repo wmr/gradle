@@ -814,8 +814,9 @@ class GradleKotlinDslIntegrationTest : AbstractPluginIntegrationTest() {
 
         withBuildScript("""
             task("test") {
+                val value = project.properties.getOrDefault("non-existent-property", "default-value")
                 doLast {
-                    println(project.properties.getOrDefault("non-existent-property", "default-value"))
+                    println(value)
                 }
             }
         """)

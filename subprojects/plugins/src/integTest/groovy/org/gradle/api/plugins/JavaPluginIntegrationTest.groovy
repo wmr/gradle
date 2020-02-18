@@ -28,12 +28,12 @@ class JavaPluginIntegrationTest extends AbstractIntegrationSpec {
             
             task expect {
                 doLast {
-                    def component = project.services.get(${ComponentRegistry.canonicalName}).mainComponent
-                    
+                    def component = services.get(${ComponentRegistry.canonicalName}).mainComponent
+
                     assert component instanceof ${BuildableJavaComponent.canonicalName}
                     assert component.buildTasks as List == [ JavaBasePlugin.BUILD_TASK_NAME ]
                     assert component.runtimeClasspath != null
-                    assert component.compileDependencies == project.configurations.compileClasspath
+                    assert component.compileDependencies == configurations.compileClasspath
                 }
             }
         """
