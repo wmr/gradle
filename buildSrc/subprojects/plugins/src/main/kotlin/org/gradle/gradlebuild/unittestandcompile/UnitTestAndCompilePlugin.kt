@@ -199,10 +199,7 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
     private
     fun Project.addCompileAllTask() {
         tasks.register("compileAll") {
-            val compileTasks = project.tasks.matching {
-                it is JavaCompile || it is GroovyCompile
-            }
-            dependsOn(compileTasks)
+            dependsOn(tasks.withType<AbstractCompile>())
         }
     }
 

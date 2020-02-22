@@ -58,9 +58,9 @@ buildTypes {
 
     create("sanityCheck") {
         tasks(
-            "classes", "docs:checkstyleApi", "codeQuality", "allIncubationReportsZip",
-            "docs:check", "distribution:checkBinaryCompatibility", "docs:javadocAll",
-            "architectureTest:test", "toolingApi:toolingApiShadedJar")
+            "classes", ":docs:checkstyleApi", "codeQuality", "allIncubationReportsZip",
+            ":docs:check", ":distribution:checkBinaryCompatibility", ":docs:javadocAll",
+            ":architectureTest:test", ":toolingApi:toolingApiShadedJar")
     }
 
     // Used by the first phase of the build pipeline, running only last version on multiversion - tests
@@ -102,35 +102,35 @@ buildTypes {
     }
 
     create("performanceTests") {
-        tasks("performance:performanceTest")
+        tasks(":performance:performanceTest")
     }
 
     create("performanceExperiments") {
-        tasks("performance:performanceExperiments")
+        tasks(":performance:performanceExperiments")
     }
 
     create("fullPerformanceTests") {
-        tasks("performance:fullPerformanceTest")
+        tasks(":performance:fullPerformanceTest")
     }
 
     create("distributedPerformanceTests") {
-        tasks("performance:distributedPerformanceTest")
+        tasks(":performance:distributedPerformanceTest")
     }
 
     create("distributedSlowPerformanceTests") {
-        tasks("performance:distributedSlowPerformanceTest")
+        tasks(":performance:distributedSlowPerformanceTest")
     }
 
     create("distributedPerformanceExperiments") {
-        tasks("performance:distributedPerformanceExperiment")
+        tasks(":performance:distributedPerformanceExperiment")
     }
 
     create("distributedHistoricalPerformanceTests") {
-        tasks("performance:distributedHistoricalPerformanceTest")
+        tasks(":performance:distributedHistoricalPerformanceTest")
     }
 
     create("distributedFlakinessDetections") {
-        tasks("performance:distributedFlakinessDetection")
+        tasks(":performance:distributedFlakinessDetection")
     }
 
     // Used for cross version tests on CI
@@ -154,18 +154,18 @@ buildTypes {
     // Used to build production distros and smoke test them
     create("packageBuild") {
         tasks("verifyIsProductionBuildEnvironment", "clean", "buildDists",
-            "distributions:integTest", ":docs:checkSamples")
+            ":distributions:integTest", ":docs:checkSamples")
     }
 
     // Used to build production distros and smoke test them
     create("promotionBuild") {
         tasks(
-            "verifyIsProductionBuildEnvironment", "clean", "docs:check",
-            "buildDists", "distributions:integTest", "publish")
+            "verifyIsProductionBuildEnvironment", "clean", ":docs:check",
+            "buildDists", ":distributions:integTest", "publish")
     }
 
     create("soakTest") {
-        tasks("soak:soakIntegTest")
+        tasks(":soak:soakIntegTest")
         projectProperties("testAllVersions" to true)
     }
 

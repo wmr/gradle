@@ -1,153 +1,71 @@
+/*
+ * Copyright 2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gradle.plugins.buildtypes
 
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.tasks.TaskProvider
 
-import org.gradle.kotlin.dsl.*
 
 class BuildTypesPlugin : Plugin<Project> {
-
-    override fun apply(project: Project): Unit = project.run {
-        val buildTypes = container(BuildType::class)
+    override fun apply(project: Project) = project.run {
+        // can only be applied to the root project
+        require(this === project.rootProject)
+        val buildTypes = container(BuildType::class.java)
         extensions.add("buildTypes", buildTypes)
+
         buildTypes.all {
-            register(this)
-            val activeBuildTypes = buildTypes.filter { it.active }
-            require(activeBuildTypes.size <= 1) {
-                "Only one build type can be active. Active build types: ${activeBuildTypes.joinToString(", ") { it.name }}"
-            }
-        }
-    }
+            val buildType = this@all
 
-    private
-    fun Project.register(buildType: BuildType) {
-        val buildTypeTask = tasks.register(buildType.name) {
+            active.value(false)
 
-            group = "Build Type"
+            subprojects {
+                tasks.register(buildType.name).configure {
+                    group = "Build Type"
+                    description = "Run ${buildType.name} build type"
 
-            description = "The $name build type (can only be abbreviated to '${buildType.abbreviation}')"
-
-            doFirst {
-                if(!gradle.startParameter.taskNames.any { it.equals(buildType.name) || it.equals(buildType.abbreviation)}) {
-                    throw GradleException("'$name' is a build type and must be invoked directly, and its name can only be abbreviated to '${buildType.abbreviation}'.")
-                }
-            }
-        }
-
-        val invokedTaskNames = gradle.startParameter.taskNames
-        val usedTaskNames = buildType.findUsedTaskNamesWithIndexIn(invokedTaskNames).reversed()
-        usedTaskNames.forEach { (_, usedName) ->
-            require(usedName.isNotEmpty())
-            buildType.active = true
-            buildType.onProjectProperties = { properties: ProjectProperties ->
-                properties.forEach { (name, value) ->
-                    project.setOrCreateProperty(name, value)
-                }
-            }
-        }
-        if (usedTaskNames.isNotEmpty()) {
-            afterEvaluate {
-                usedTaskNames.forEach { (index, usedName) ->
-                    invokedTaskNames.removeAt(index)
-                    val subproject = usedName.substringBeforeLast(":", "")
-                    insertBuildTypeTasksInto(invokedTaskNames, buildTypeTask, index, buildType, subproject)
-                }
-            }
-        }
-    }
-
-    private
-    fun BuildType.findUsedTaskNamesWithIndexIn(taskNames: List<String>): List<IndexedValue<String>> {
-        val candidates = arrayOf(name, abbreviation)
-        val nameSuffix = ":$name"
-        val abbreviationSuffix = ":$abbreviation"
-        return taskNames.withIndex().filter { (index, taskName) ->
-            (taskName in candidates || taskName.endsWith(nameSuffix) || taskName.endsWith(abbreviationSuffix)) && !isTaskHelpInvocation(taskNames, index)
-        }
-    }
-
-    private
-    fun isTaskHelpInvocation(taskNames: List<String>, taskIndex: Int) =
-        taskIndex >= 2
-            && taskNames[taskIndex - 1] == "--task"
-            && taskNames[taskIndex - 2].let(helpTaskRegex::matches)
-
-    private
-    val helpTaskRegex = Regex("h(e(lp?)?)?")
-}
-
-
-internal
-fun Project.insertBuildTypeTasksInto(
-    taskList: MutableList<String>,
-    buildTypeTask: TaskProvider<Task>,
-    index: Int,
-    buildType: BuildType,
-    subproject: String
-) {
-
-    fun insert(task: String) =
-        taskList.add(index, task)
-
-    fun forEachBuildTypeTask(act: (String) -> Unit) =
-        buildType.tasks.reversed().forEach(act)
-
-    fun ensureBuildTypeTaskOrdering(matchingTasks: List<Task>) = {
-        matchingTasks.forEach { t ->
-            taskList.forEach {
-                t.shouldRunAfter(it)
-            }
-        }
-    }
-
-    when {
-        subproject.isEmpty() ->
-            forEachBuildTypeTask {
-                val matchingTasks = ArrayList<Task>()
-                getAllprojects().forEach { p ->
-                    val matchingTask = p.getTasks().findByName(it)
-                    if (matchingTask != null) {
-                        buildTypeTask.configure {
-                            dependsOn(matchingTask)
+                    dependsOn(buildType.taskNames.map { taskNames ->
+                        taskNames.filter {
+                            it.startsWith(":") || tasks.findByName(it) != null
                         }
-                        matchingTasks.add(matchingTask)
-                    }
-                }
-                ensureBuildTypeTaskOrdering(matchingTasks)
-                matchingTasks.map{t -> t.path}.forEach(::insert)
-            }
+                    })
 
-        findProject(subproject) != null ->
-            forEachBuildTypeTask {
-                val taskPath = "$subproject:$it"
-                when {
-                    tasks.findByPath(taskPath) == null -> println("Skipping task '$taskPath' requested by build type ${buildType.name}, as it does not exist.")
-                    else -> {
-                        buildTypeTask.configure {
-                            dependsOn(taskPath)
-                        }
-                        ensureBuildTypeTaskOrdering(listOf(tasks.getByPath(taskPath)))
-                        insert(taskPath)
-                    }
+                    // This is a bit hacky.  We assume that if the build type is realized
+                    // then it will be executed.
+                    buildType.active.set(true)
+
+                    // TODO: It would be better if we didn't need to change project properties or they were wired
+                    // in more directly.  Changing the project properties is a side effect of configuring this task.
+                    buildType.projectProperties.finalizeValue()
+                    buildType.projectProperties.get().forEach { k, v -> setOrCreateProperty(k, v) }
                 }
             }
-        else -> {
-            println("Skipping execution of build type '${buildType.name}'. Project '$subproject' not found in root project '$name'.")
+        }
+
+        // Only allow one build type to be used in a build
+        gradle.taskGraph.whenReady {
+            val activeBuildTypes = buildTypes.filter { it.active.get() }
+            check(activeBuildTypes.size <= 1) { "You can only have one active build type at a time. Active: $activeBuildTypes" }
         }
     }
 
-    if (taskList.isEmpty()) {
-        taskList.add("help") // do not trigger the default tasks
-    }
-}
-
-
-fun Project.setOrCreateProperty(propertyName: String, value: Any) {
-    when {
-        hasProperty(propertyName) -> setProperty(propertyName, value)
-        else -> extra.set(propertyName, value)
+    private
+    fun Project.setOrCreateProperty(propertyName: String, value: Any) {
+        when {
+            hasProperty(propertyName) -> setProperty(propertyName, value)
+            else -> extensions.extraProperties[propertyName] = value
+        }
     }
 }

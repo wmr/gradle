@@ -1,40 +1,44 @@
+/*
+ * Copyright 2020 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.gradle.plugins.buildtypes
 
+import org.gradle.api.Named
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
 
-typealias ProjectProperties = Map<String, Any>
 
-
-class BuildType(val name: String) {
-
-    init {
-        require(name.isNotEmpty())
+abstract class BuildType constructor(private val name: String) : Named {
+    override fun getName(): String {
+        return name
     }
 
-    val abbreviation = abbreviationOf(name)
-
-    var tasks: List<String> = emptyList()
-
-    var active = false
-
-    var onProjectProperties: (ProjectProperties) -> Unit = {}
+    abstract val projectProperties: MapProperty<String, Any>
+    abstract val taskNames: ListProperty<String>
+    abstract val active: Property<Boolean>
 
     fun tasks(vararg tasks: String) {
-        this.tasks = tasks.asList()
+        taskNames.addAll(*tasks)
     }
 
-    fun projectProperties(vararg pairs: Pair<String, Any>) {
-        // this is so that when we configure the active buildType,
-        // the project properties set for that buildType immediately
-        // become active in the build
-        if (active) onProjectProperties(pairs.toMap())
+    fun projectProperties(pair: Pair<String, Any>) {
+        projectProperties.put(pair.component1(), pair.component2())
+    }
+
+    override fun toString(): String {
+        return getName()
     }
 }
-
-
-private
-fun abbreviationOf(name: String) =
-    name[0] + name.substring(1).replace(lowercaseAlphaRegex, "")
-
-
-private
-val lowercaseAlphaRegex = Regex("\\p{Lower}")
