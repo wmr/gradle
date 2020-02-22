@@ -59,7 +59,7 @@ buildTypes {
     create("sanityCheck") {
         tasks(
             "classes", ":docs:checkstyleApi", "codeQuality", "allIncubationReportsZip",
-            ":docs:check", ":distribution:checkBinaryCompatibility", ":docs:javadocAll",
+            ":docs:check", ":distributions:checkBinaryCompatibility", ":docs:javadocAll",
             ":architectureTest:test", ":toolingApi:toolingApiShadedJar")
     }
 
