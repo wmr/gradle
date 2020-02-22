@@ -10,7 +10,6 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.ide.eclipse.EclipsePlugin
 import org.gradle.plugins.ide.idea.IdeaPlugin
-import java.io.File
 
 
 enum class TestType(val prefix: String, val executers: List<String>, val libRepoRequired: Boolean) {
@@ -91,14 +90,6 @@ fun Project.createTestTask(name: String, executer: String, sourceSet: SourceSet,
         classpath = sourceSet.runtimeClasspath
         libsRepository.required = testType.libRepoRequired
         extraConfig.execute(this)
-    }
-
-
-fun splitIntoBuckets(sourceFiles: List<File>, numberOfSplits: Int): List<List<File>> =
-    if (sourceFiles.size % numberOfSplits == 0) {
-        sourceFiles.chunked(sourceFiles.size / numberOfSplits)
-    } else {
-        sourceFiles.chunked(sourceFiles.size / numberOfSplits + 1)
     }
 
 

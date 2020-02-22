@@ -68,12 +68,6 @@ buildTypes {
         tasks("test", "integTest", "crossVersionTest")
     }
 
-    // Used for builds to run all tests
-    create("fullTest") {
-        tasks("test", "forkingIntegTest", "forkingCrossVersionTest")
-        projectProperties("testAllVersions" to true)
-    }
-
     // Used for builds to test the code on certain platforms
     create("platformTest") {
         tasks("test", "forkingIntegTest", "forkingCrossVersionTest")
