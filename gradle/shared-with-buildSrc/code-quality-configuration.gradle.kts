@@ -87,12 +87,13 @@ fun Project.configureCodenarc(codeQualityConfigDir: File) {
 
 
 fun Project.configureCodeQualityTasks() {
-    val codeQualityTasks = tasks.matching { it is CodeNarc || it is Checkstyle }
     tasks.register("codeQuality").configure {
-        dependsOn(codeQualityTasks)
+        dependsOn(tasks.withType<CodeNarc>())
+        dependsOn(tasks.withType<Checkstyle>())
     }
     tasks.withType(Test::class.java).configureEach {
-        shouldRunAfter(codeQualityTasks)
+        shouldRunAfter(tasks.withType<CodeNarc>())
+        shouldRunAfter(tasks.withType<Checkstyle>())
     }
 }
 
