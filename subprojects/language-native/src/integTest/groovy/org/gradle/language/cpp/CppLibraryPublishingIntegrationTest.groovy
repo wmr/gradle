@@ -62,7 +62,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
         lib.writeToProject(testDirectory)
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         result.assertTasksExecuted(
@@ -179,7 +179,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
         app.shuffle.writeToProject(file('shuffle'))
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         def repo = new MavenFileRepository(repoDir)
@@ -292,7 +292,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
         app.card.writeToProject(producer.file('card'))
         app.shuffle.writeToProject(producer.file('shuffle'))
         executer.inDirectory(producer)
-        run('publish')
+        run('publish', '-i')
 
         settingsFile << "rootProject.name = 'deck'"
         buildFile << """
@@ -418,7 +418,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
         app.shuffle.writeToProject(file('shuffle'))
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         def repo = new MavenFileRepository(repoDir)
@@ -520,7 +520,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
         lib.writeToProject(testDirectory)
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         def repo = new MavenFileRepository(file("repo"))
@@ -548,7 +548,7 @@ class CppLibraryPublishingIntegrationTest extends AbstractCppPublishingIntegrati
 """
         lib.writeToProject(testDirectory)
 
-        run('publish')
+        run('publish', '-i')
 
         def consumer = file("consumer")
         consumer.file("settings.gradle") << ''
@@ -573,7 +573,7 @@ dependencies { implementation 'some.group:testlib:1.2' }
 library.privateHeaders.from = []
 library.publicHeaders.from 'src/main/public', 'src/main/headers'
 """
-        run('publish')
+        run('publish', '-i')
 
         then:
         executer.inDirectory(consumer)
@@ -605,7 +605,7 @@ library.publicHeaders.from 'src/main/public', 'src/main/headers'
         app.greeterLib.writeToProject(file('greeter'))
         app.loggerLib.writeToProject(file('logger'))
 
-        run('publish')
+        run('publish', '-i')
 
         def consumer = file("consumer")
         consumer.file("settings.gradle") << ''
@@ -627,7 +627,7 @@ dependencies { implementation 'some.group:greeter:1.2' }
 
         when:
         buildFile.text = buildFile.text.replace("dependencies { implementation project(':logger')", "dependencies { api project(':logger')")
-        run('publish')
+        run('publish', '-i')
 
         then:
         executer.inDirectory(consumer)
@@ -659,7 +659,7 @@ dependencies { implementation 'some.group:greeter:1.2' }
         app.greeterLib.writeToProject(file(producer))
 
         executer.inDirectory(producer)
-        run('publish')
+        run('publish', '-i')
 
         def consumer = file("consumer").createDir()
         consumer.file("settings.gradle") << ""
@@ -783,7 +783,7 @@ dependencies { implementation 'some.group:greeter:1.2' }
         app.shuffle.writeToProject(file('shuffle'))
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         assertMainModuleIsPublished('some.group', 'deck', '1.2', targetMachines, ["some.group:card:1.2"])
@@ -853,7 +853,7 @@ dependencies { implementation 'some.group:greeter:1.2' }
         app.shuffle.writeToProject(file('shuffle'))
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         assertMainModuleIsPublished('some.group', 'deck', '1.2', targetMachines, ["some.group:card:1.2"])
@@ -922,7 +922,7 @@ dependencies { implementation 'some.group:greeter:1.2' }
         app.shuffle.writeToProject(file('shuffle'))
 
         when:
-        run('publish')
+        run('publish', '-i')
 
         then:
         mavenRepo.module('some.group', 'deck', '1.2').assertPublished()
