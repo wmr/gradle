@@ -50,6 +50,7 @@ import org.gradle.instantexecution.serialization.unsupported
 import org.gradle.internal.Factory
 import org.gradle.internal.event.ListenerManager
 import org.gradle.internal.fingerprint.FileCollectionFingerprinterRegistry
+import org.gradle.internal.hash.ChecksumService
 import org.gradle.internal.hash.ClassLoaderHierarchyHasher
 import org.gradle.internal.isolation.IsolatableFactory
 import org.gradle.internal.operations.BuildOperationExecutor
@@ -155,6 +156,7 @@ class Codecs(
         bind(ownerServiceCodec<BuildOperationListenerManager>())
         bind(ownerServiceCodec<BuildRequestMetaData>())
         bind(ownerServiceCodec<ListenerManager>())
+        bind(ownerServiceCodec<ChecksumService>())
         bind(ServicesCodec())
 
         bind(ProxyCodec)
