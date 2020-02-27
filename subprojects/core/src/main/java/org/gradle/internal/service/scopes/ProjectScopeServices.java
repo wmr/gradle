@@ -23,7 +23,7 @@ import org.gradle.api.internal.DomainObjectContext;
 import org.gradle.api.internal.MutationGuards;
 import org.gradle.api.internal.artifacts.DependencyManagementServices;
 import org.gradle.api.internal.artifacts.Module;
-import org.gradle.api.internal.artifacts.ProjectModuleFactory;
+import org.gradle.api.internal.artifacts.ProjectBackedModule;
 import org.gradle.api.internal.artifacts.configurations.DependencyMetaDataProvider;
 import org.gradle.api.internal.artifacts.dsl.dependencies.ProjectFinder;
 import org.gradle.api.internal.collections.DefaultDomainObjectCollectionFactory;
@@ -33,6 +33,8 @@ import org.gradle.api.internal.component.DefaultSoftwareComponentContainer;
 import org.gradle.api.internal.file.DefaultSourceDirectorySetFactory;
 import org.gradle.api.internal.file.DefaultTemporaryFileProvider;
 import org.gradle.api.internal.file.FileCollectionFactory;
+import org.gradle.api.internal.file.FileFactory;
+import org.gradle.api.internal.file.FilePropertyFactory;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.file.SourceDirectorySetFactory;
 import org.gradle.api.internal.file.TemporaryFileProvider;
@@ -264,8 +266,8 @@ public class ProjectScopeServices extends DefaultServiceRegistry {
         }
     }
 
-    protected DependencyMetaDataProvider createDependencyMetaDataProvider(ProjectModuleFactory projectModuleIdentifierFactory) {
-        return new ProjectBackedModuleMetaDataProvider(projectModuleIdentifierFactory);
+    protected DependencyMetaDataProvider createDependencyMetaDataProvider() {
+        return new ProjectBackedModuleMetaDataProvider();
     }
 
     protected ServiceRegistryFactory createServiceRegistryFactory(final ServiceRegistry services) {
@@ -283,15 +285,9 @@ public class ProjectScopeServices extends DefaultServiceRegistry {
     }
 
     private class ProjectBackedModuleMetaDataProvider implements DependencyMetaDataProvider {
-        private final ProjectModuleFactory projectModuleIdentifierFactory;
-
-        public ProjectBackedModuleMetaDataProvider(ProjectModuleFactory projectModuleIdentifierFactory) {
-            this.projectModuleIdentifierFactory = projectModuleIdentifierFactory;
-        }
-
         @Override
         public Module getModule() {
-            return projectModuleIdentifierFactory.getModule(project);
+            return new ProjectBackedModule(project);
         }
     }
 
@@ -316,12 +312,12 @@ public class ProjectScopeServices extends DefaultServiceRegistry {
         return new DefaultDomainObjectCollectionFactory(instantiatorFactory, services, collectionCallbackActionDecorator, MutationGuards.of(projectConfigurator));
     }
 
-    protected ManagedFactoryRegistry createManagedFactoryRegistry(ManagedFactoryRegistry parent, FileResolver fileResolver, FileCollectionFactory fileCollectionFactory, TaskDependencyFactory taskDependencyFactory, Factory<PatternSet> patternSetFactory) {
+    protected ManagedFactoryRegistry createManagedFactoryRegistry(ManagedFactoryRegistry parent, FileResolver fileResolver, TaskDependencyFactory taskDependencyFactory, Factory<PatternSet> patternSetFactory, FileFactory fileFactory, FilePropertyFactory filePropertyFactory) {
         return new DefaultManagedFactoryRegistry(parent).withFactories(
             new ManagedFactories.ConfigurableFileCollectionManagedFactory(fileResolver, taskDependencyFactory, patternSetFactory),
-            new org.gradle.api.internal.file.ManagedFactories.RegularFilePropertyManagedFactory(fileResolver),
-            new org.gradle.api.internal.file.ManagedFactories.DirectoryManagedFactory(fileResolver, fileCollectionFactory),
-            new org.gradle.api.internal.file.ManagedFactories.DirectoryPropertyManagedFactory(fileResolver, fileCollectionFactory)
+            new org.gradle.api.internal.file.ManagedFactories.RegularFilePropertyManagedFactory(filePropertyFactory),
+            new org.gradle.api.internal.file.ManagedFactories.DirectoryManagedFactory(fileFactory),
+            new org.gradle.api.internal.file.ManagedFactories.DirectoryPropertyManagedFactory(filePropertyFactory)
         );
     }
 }

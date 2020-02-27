@@ -1,15 +1,30 @@
 import build.futureKotlin
 import org.gradle.gradlebuild.unittestandcompile.ModuleType
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `kotlin-library`
 }
 
 tasks {
+
+    withType<KotlinCompile>().configureEach {
+        kotlinOptions {
+            freeCompilerArgs += listOf(
+                "-XXLanguage:+NewInference",
+                "-XXLanguage:+SamConversionForKotlinFunctions"
+            )
+        }
+    }
+
     processResources {
         from({ project(":instantExecutionReport").tasks.named("assembleReport") }) {
             into("org/gradle/instantexecution")
         }
+    }
+
+    instantIntegTest {
+        enabled = false
     }
 }
 
@@ -20,6 +35,7 @@ dependencies {
     implementation(project(":logging"))
     implementation(project(":coreApi"))
     implementation(project(":core"))
+    implementation(project(":resources"))
     implementation(project(":snapshots"))
     implementation(project(":modelCore"))
     implementation(project(":fileCollections"))
@@ -31,6 +47,7 @@ dependencies {
     // TODO - it might be good to allow projects to contribute state to save and restore, rather than have this project know about everything
     implementation(project(":toolingApi"))
     implementation(project(":buildEvents"))
+    implementation(project(":native"))
 
     implementation(library("groovy"))
     implementation(library("slf4j_api"))
@@ -65,11 +82,4 @@ dependencies {
 
 gradlebuildJava {
     moduleType = ModuleType.CORE
-}
-
-
-tasks {
-    instantIntegTest {
-        enabled = false
-    }
 }

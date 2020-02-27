@@ -32,7 +32,6 @@ plugins {
     gradlebuild.`ci-reporting`
     gradlebuild.security
     gradlebuild.install
-    id("org.gradle.ci.tag-single-build") version ("0.74")
 }
 
 buildscript {
@@ -59,7 +58,7 @@ buildTypes {
     create("sanityCheck") {
         tasks(
             "classes", ":docs:checkstyleApi", "codeQuality", "allIncubationReportsZip",
-            ":docs:check", ":distributions:checkBinaryCompatibility", ":docs:javadocAll",
+            ":distributions:checkBinaryCompatibility", ":docs:javadocAll",
             ":architectureTest:test", ":toolingApi:toolingApiShadedJar")
     }
 
@@ -148,7 +147,7 @@ buildTypes {
     // Used to build production distros and smoke test them
     create("packageBuild") {
         tasks("verifyIsProductionBuildEnvironment", "clean", "buildDists",
-            ":distributions:integTest", ":docs:checkSamples")
+            ":distributions:integTest", ":docs:checkSamples", ":docs:check")
     }
 
     // Used to build production distros and smoke test them

@@ -39,9 +39,8 @@ import org.gradle.api.internal.CollectionCallbackActionDecorator
 import org.gradle.api.internal.FactoryNamedDomainObjectContainer
 import org.gradle.api.internal.GradleInternal
 import org.gradle.api.internal.ProcessOperations
-import org.gradle.api.internal.artifacts.DefaultProjectModuleFactory
 import org.gradle.api.internal.artifacts.Module
-import org.gradle.api.internal.artifacts.ProjectModuleFactory
+import org.gradle.api.internal.artifacts.ProjectBackedModule
 import org.gradle.api.internal.artifacts.configurations.DependencyMetaDataProvider
 import org.gradle.api.internal.collections.DomainObjectCollectionFactory
 import org.gradle.api.internal.file.DefaultProjectLayout
@@ -155,9 +154,6 @@ class DefaultProjectTest extends Specification {
     CrossProjectConfigurator crossProjectConfigurator = new BuildOperationCrossProjectConfigurator(buildOperationExecutor)
     ClassLoaderScope baseClassLoaderScope = new RootClassLoaderScope("root", getClass().classLoader, getClass().classLoader, new DummyClassLoaderCache(), Stub(ClassLoaderScopeRegistryListener))
     ClassLoaderScope rootProjectClassLoaderScope = baseClassLoaderScope.createChild("root-project")
-    ProjectModuleFactory moduleFactory = new DefaultProjectModuleFactory(Mock(ProjectRegistry) {
-        getAllProjects() >> []
-    })
 
     def setup() {
         rootDir = new File("/path/root").absoluteFile
@@ -230,7 +226,7 @@ class DefaultProjectTest extends Specification {
         ModelSchemaStore modelSchemaStore = Stub(ModelSchemaStore)
         serviceRegistryMock.get((Type) ModelSchemaStore) >> modelSchemaStore
         serviceRegistryMock.get(ModelSchemaStore) >> modelSchemaStore
-        serviceRegistryMock.get((Type) DefaultProjectLayout) >> new DefaultProjectLayout(rootDir, TestFiles.resolver(rootDir), Stub(TaskDependencyFactory), Stub(FileCollectionFactory))
+        serviceRegistryMock.get((Type) DefaultProjectLayout) >> new DefaultProjectLayout(rootDir, TestFiles.resolver(rootDir), Stub(TaskDependencyFactory), Stub(FileCollectionFactory), TestFiles.filePropertyFactory(), TestFiles.fileFactory())
 
         build.getProjectEvaluationBroadcaster() >> Stub(ProjectEvaluationListener)
         build.getParent() >> null
@@ -957,7 +953,7 @@ def scriptMethod(Closure closure) {
 
     def getModule() {
         when:
-        Module moduleDummyResolve = moduleFactory.getModule(project)
+        Module moduleDummyResolve = new ProjectBackedModule(project)
         dependencyMetaDataProviderMock.getModule() >> moduleDummyResolve
         then:
         project.getModule() == moduleDummyResolve
