@@ -34,7 +34,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
     private static final int TOTAL_NUMBER_OF_SOURCES = NUMBER_OF_SUBPROJECTS * NUMBER_OF_SOURCES_PER_SUBPROJECT
     private static final double LOST_EVENTS_RATIO_MAC_OS = 0.6
     private static final double LOST_EVENTS_RATIO_WINDOWS = 0.1
-    public static final int NUMBER_OF_REPETITIONS = 100
+    public static final int NUMBER_OF_REPETITIONS = 40
 
     List<TestFile> sourceFiles
 
@@ -66,8 +66,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
     }
 
-    @Ignore
-    def "file watching works with multiple builds on the same daemon"() {
+    def "file watching works with multiple builds on the same daemon (#sleepTime between builds)"() {
         when:
         succeeds("assemble")
         def daemon = daemons.daemon
@@ -76,17 +75,20 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
 
         expect:
         NUMBER_OF_REPETITIONS.times { iteration ->
-            changeSourceFiles(iteration)
-            waitForChangesToBePickedUp()
+            changeSourceFiles(iteration, 1000)
+            Thread.sleep(sleepTime)
             succeeds("assemble")
             assert daemons.daemon.logFile == daemon.logFile
             daemon.assertIdle()
             assertWatchingSucceeded()
-            retainedFilesInCurrentBuild - TOTAL_NUMBER_OF_SOURCES == retainedFilesSinceLastBuild
-            assert receivedFileSystemEvents >= minimumExpectedFileSystemEvents(TOTAL_NUMBER_OF_SOURCES, 1)
+            retainedFilesInCurrentBuild - 1000 == retainedFilesSinceLastBuild
+            assert receivedFileSystemEvents >= minimumExpectedFileSystemEvents(1000, 1)
         }
+        where:
+        sleepTime << [10, 20, 50, 100, 200]
     }
 
+    @Ignore
     def "file watching works with many changes between two builds (#numberOfChangedSourceFiles changed files)"() {
         // Use 20 minutes idle timeout since the test may be running longer with an idle daemon
         executer.withDaemonIdleTimeoutSecs(1200)
