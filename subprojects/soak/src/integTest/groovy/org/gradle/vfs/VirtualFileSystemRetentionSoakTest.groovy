@@ -22,7 +22,10 @@ import org.gradle.internal.os.OperatingSystem
 import org.gradle.soak.categories.SoakTest
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.experimental.categories.Category
+import spock.lang.Ignore
+import spock.lang.Unroll
 
+@Unroll
 @Category(SoakTest)
 class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implements VfsRetentionFixture {
 
@@ -63,6 +66,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
     }
 
+    @Ignore
     def "file watching works with multiple builds on the same daemon"() {
         when:
         succeeds("assemble")
@@ -72,7 +76,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
 
         expect:
         NUMBER_OF_REPETITIONS.times { iteration ->
-            changeAllSourceFiles(iteration)
+            changeSourceFiles(iteration)
             waitForChangesToBePickedUp()
             succeeds("assemble")
             assert daemons.daemon.logFile == daemon.logFile
@@ -83,7 +87,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
     }
 
-    def "file watching works with many changes between two builds"() {
+    def "file watching works with many changes between two builds (#numberOfChangedSourceFiles changed files)"() {
         // Use 20 minutes idle timeout since the test may be running longer with an idle daemon
         executer.withDaemonIdleTimeoutSecs(1200)
 
@@ -95,7 +99,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
 
         when:
         NUMBER_OF_REPETITIONS.times { iteration ->
-            changeAllSourceFiles(iteration)
+            changeSourceFiles(iteration, numberOfChangedSourceFiles)
             waitForChangesToBePickedUp()
         }
         then:
@@ -103,8 +107,11 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         daemons.daemon.logFile == daemon.logFile
         daemon.assertIdle()
         assertWatchingSucceeded()
-        receivedFileSystemEvents >= minimumExpectedFileSystemEvents(TOTAL_NUMBER_OF_SOURCES, NUMBER_OF_REPETITIONS)
-        retainedFilesInCurrentBuild - TOTAL_NUMBER_OF_SOURCES == retainedFilesSinceLastBuild
+        receivedFileSystemEvents >= minimumExpectedFileSystemEvents(numberOfChangedSourceFiles, NUMBER_OF_REPETITIONS)
+        retainedFilesInCurrentBuild - numberOfChangedSourceFiles == retainedFilesSinceLastBuild
+
+        where:
+        numberOfChangedSourceFiles << [50 , 100, 500, 1000, 2000, 3000, 4000, 5000 ]
     }
 
     private static int minimumExpectedFileSystemEvents(int numberOfChangedFiles, int numberOfChangesPerFile) {
@@ -121,8 +128,8 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         throw new AssertionError("Test not supported on OS ${currentOs}")
     }
 
-    private void changeAllSourceFiles(int iteration) {
-        sourceFiles.each { sourceFile ->
+    private void changeSourceFiles(int iteration, int number = TOTAL_NUMBER_OF_SOURCES) {
+        sourceFiles.take(number).each { sourceFile ->
             modifySourceFile(sourceFile, iteration + 1)
         }
     }
