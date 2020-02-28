@@ -194,6 +194,10 @@ allprojects {
             name = "kotlin-eap"
             url = uri("https://dl.bintray.com/kotlin/kotlin-eap")
         }
+        maven {
+            name = "Groovy snapshots"
+            url = uri("https://oss.jfrog.org/artifactory/oss-snapshot-local")
+        }
     }
 
     // patchExternalModules lives in the root project - we need to activate normalization there, too.
