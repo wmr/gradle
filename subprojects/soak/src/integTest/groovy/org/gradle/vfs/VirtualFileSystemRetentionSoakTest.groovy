@@ -23,6 +23,8 @@ import org.gradle.internal.vfs.watch.FileWatcherRegistry
 import org.gradle.soak.categories.SoakTest
 import org.gradle.test.fixtures.file.TestFile
 import org.junit.experimental.categories.Category
+import spock.lang.Ignore
+import spock.lang.Unroll
 
 @Category(SoakTest)
 class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implements VfsRetentionFixture {
@@ -62,6 +64,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
     }
 
+    @Ignore
     def "file watching works with multiple builds on the same daemon"() {
         def numberOfChangesBetweenBuilds = maxFileChangesWithoutOverflow
 
@@ -84,10 +87,10 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
     }
 
-    def "file watching works with many changes between two builds"() {
+    @Unroll
+    def "file watching works with many changes between two builds (#waitTime ms between changes, #numberOfChangedSourcesFilesPerBatch changes per batch"() {
         // Use 20 minutes idle timeout since the test may be running longer with an idle daemon
         executer.withDaemonIdleTimeoutSecs(1200)
-        def numberOfChangedSourcesFilesPerBatch = maxFileChangesWithoutOverflow
         def numberOfChangeBatches = 500
 
         when:
@@ -99,7 +102,8 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         when:
         numberOfChangeBatches.times { iteration ->
             changeSourceFiles(iteration, numberOfChangedSourcesFilesPerBatch)
-            waitBetweenChangesToAvoidOverflow()
+            Thread.sleep(waitTime)
+            assert daemons.getDaemons().size() == 1
             assert !daemon.logContains(FileWatcherRegistry.Type.INVALIDATE.toString()) : "Overflow in file watcher after ${iteration} iterations"
         }
         then:
@@ -109,6 +113,10 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         assertWatchingSucceeded()
         receivedFileSystemEvents >= minimumExpectedFileSystemEvents(numberOfChangedSourcesFilesPerBatch, numberOfChangeBatches)
         retainedFilesInCurrentBuild - numberOfChangedSourcesFilesPerBatch == retainedFilesSinceLastBuild
+        where:
+        waitTimeAndNumber << [[100, 150, 200, 300], [800, 1000]].combinations()
+        waitTime = waitTimeAndNumber[0]
+        numberOfChangedSourcesFilesPerBatch = waitTimeAndNumber[1]
     }
 
     private static int getMaxFileChangesWithoutOverflow() {
