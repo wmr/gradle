@@ -54,6 +54,7 @@ tasks.register("soakIntegTest", org.gradle.gradlebuild.test.integrationtests.Soa
     testClassesDirs = integTestSourceSet.output.classesDirs
     classpath = integTestSourceSet.runtimeClasspath
     systemProperty("org.gradle.soaktest", "true")
+    maxParallelForks = 1
     options {
         require(this is JUnitOptions)
         includeCategories("org.gradle.soak.categories.SoakTest")
