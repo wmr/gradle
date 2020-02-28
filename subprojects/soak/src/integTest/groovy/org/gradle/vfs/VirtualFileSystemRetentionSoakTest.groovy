@@ -90,8 +90,8 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
     @Unroll
     def "file watching works with many changes between two builds (#waitTime ms between changes, #numberOfChangedSourcesFilesPerBatch changes per batch"() {
         // Use 20 minutes idle timeout since the test may be running longer with an idle daemon
-        executer.withDaemonIdleTimeoutSecs(1200)
-        def numberOfChangeBatches = 500
+        executer.withDaemonIdleTimeoutSecs(2400)
+        def numberOfChangeBatches = 250
 
         when:
         succeeds("assemble")
