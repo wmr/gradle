@@ -114,7 +114,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         receivedFileSystemEvents >= minimumExpectedFileSystemEvents(numberOfChangedSourcesFilesPerBatch, numberOfChangeBatches)
         retainedFilesInCurrentBuild - numberOfChangedSourcesFilesPerBatch == retainedFilesSinceLastBuild
         where:
-        waitTimeAndNumber << [[100, 150, 200, 300], [800, 1000]].combinations()
+        waitTimeAndNumber << [[200, 300, 500, 800], [800, 1000]].combinations()
         waitTime = waitTimeAndNumber[0]
         numberOfChangedSourcesFilesPerBatch = waitTimeAndNumber[1]
     }
