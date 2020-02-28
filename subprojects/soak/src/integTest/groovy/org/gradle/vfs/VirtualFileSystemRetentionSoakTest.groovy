@@ -26,6 +26,9 @@ import org.junit.experimental.categories.Category
 import spock.lang.Ignore
 import spock.lang.Unroll
 
+import java.time.Duration
+import java.time.Instant
+
 @Category(SoakTest)
 class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implements VfsRetentionFixture {
 
@@ -38,6 +41,8 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
 
     def setup() {
         def subprojects = (1..NUMBER_OF_SUBPROJECTS).collect { "project$it" }
+        // Use a subdir, so the daemon log is not within the project directory.
+        buildTestFixture.withBuildInSubDir()
         def rootProject = multiProjectBuild("javaProject", subprojects) {
             buildFile << """
                 allprojects {
@@ -58,6 +63,7 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
         }
 
         executer.beforeExecute {
+            inDirectory(rootProject)
             withRetention()
             // running in parallel, so the soak test doesn't take this long.
             withArgument("--parallel")
@@ -104,7 +110,9 @@ class VirtualFileSystemRetentionSoakTest extends DaemonIntegrationSpec implement
             changeSourceFiles(iteration, numberOfChangedSourcesFilesPerBatch)
             Thread.sleep(waitTime)
             assert daemons.getDaemons().size() == 1
+            def start = Instant.now()
             assert !daemon.logContains(FileWatcherRegistry.Type.INVALIDATE.toString()) : "Overflow in file watcher after ${iteration} iterations"
+            println("Checking deamon log took: ${Duration.between(start, Instant.now()).toMillis()}ms")
         }
         then:
         succeeds("assemble")
