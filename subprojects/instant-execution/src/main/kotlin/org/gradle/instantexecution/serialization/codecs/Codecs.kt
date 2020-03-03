@@ -36,6 +36,7 @@ import org.gradle.api.internal.file.FileResolver
 import org.gradle.api.internal.file.TemporaryFileProvider
 import org.gradle.api.internal.file.collections.DirectoryFileTreeFactory
 import org.gradle.api.internal.project.ProjectStateRegistry
+import org.gradle.api.internal.provider.PropertyFactory
 import org.gradle.api.internal.provider.ValueSourceProviderFactory
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.model.ObjectFactory
@@ -83,6 +84,7 @@ class Codecs(
     directoryFileTreeFactory: DirectoryFileTreeFactory,
     fileCollectionFactory: FileCollectionFactory,
     fileLookup: FileLookup,
+    propertyFactory: PropertyFactory,
     filePropertyFactory: FilePropertyFactory,
     fileResolver: FileResolver,
     instantiator: Instantiator,
@@ -122,7 +124,7 @@ class Codecs(
         bind(HashCodeSerializer())
         bind(BrokenValueCodec)
 
-        providerTypes(filePropertyFactory, buildServiceRegistry, valueSourceProviderFactory)
+        providerTypes(propertyFactory, filePropertyFactory, buildServiceRegistry, valueSourceProviderFactory)
 
         bind(ListenerBroadcastCodec(listenerManager))
         bind(LoggerCodec)
@@ -180,7 +182,7 @@ class Codecs(
 
         baseTypes()
 
-        providerTypes(filePropertyFactory, buildServiceRegistry, valueSourceProviderFactory)
+        providerTypes(propertyFactory, filePropertyFactory, buildServiceRegistry, valueSourceProviderFactory)
         fileCollectionTypes(directoryFileTreeFactory, fileCollectionFactory, patternSetFactory, fileSystem, fileFactory)
 
         bind(TaskNodeCodec(projectStateRegistry, userTypesCodec, taskNodeFactory))
@@ -210,14 +212,14 @@ class Codecs(
     }
 
     private
-    fun BindingsBuilder.providerTypes(filePropertyFactory: FilePropertyFactory, buildServiceRegistry: BuildServiceRegistryInternal, valueSourceProviderFactory: ValueSourceProviderFactory) {
+    fun BindingsBuilder.providerTypes(propertyFactory: PropertyFactory, filePropertyFactory: FilePropertyFactory, buildServiceRegistry: BuildServiceRegistryInternal, valueSourceProviderFactory: ValueSourceProviderFactory) {
         val nestedCodec = FixedValueReplacingProviderCodec(valueSourceProviderFactory, buildServiceRegistry)
-        bind(ListPropertyCodec(nestedCodec))
-        bind(SetPropertyCodec(nestedCodec))
-        bind(MapPropertyCodec(nestedCodec))
+        bind(ListPropertyCodec(propertyFactory, nestedCodec))
+        bind(SetPropertyCodec(propertyFactory, nestedCodec))
+        bind(MapPropertyCodec(propertyFactory, nestedCodec))
         bind(DirectoryPropertyCodec(filePropertyFactory, nestedCodec))
         bind(RegularFilePropertyCodec(filePropertyFactory, nestedCodec))
-        bind(PropertyCodec(nestedCodec))
+        bind(PropertyCodec(propertyFactory, nestedCodec))
         bind(BuildServiceProviderCodec(buildServiceRegistry))
         bind(ValueSourceProviderCodec(valueSourceProviderFactory))
         bind(ProviderCodec(nestedCodec))
