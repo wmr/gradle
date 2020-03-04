@@ -25,7 +25,6 @@ import org.gradle.api.logging.LogLevel
 import org.gradle.api.logging.Logging
 import org.gradle.api.provider.Provider
 import org.gradle.execution.plan.Node
-import org.gradle.initialization.GradlePropertiesController
 import org.gradle.initialization.InstantExecution
 import org.gradle.instantexecution.extensions.unsafeLazy
 import org.gradle.instantexecution.fingerprint.InstantExecutionCacheInputs
@@ -73,8 +72,7 @@ class DefaultInstantExecution internal constructor(
     private val scopeRegistryListener: InstantExecutionClassLoaderScopeRegistryListener,
     private val beanConstructors: BeanConstructors,
     private val valueSourceProviderFactory: ValueSourceProviderFactory,
-    private val virtualFileSystem: VirtualFileSystem,
-    private val gradlePropertiesController: GradlePropertiesController
+    private val virtualFileSystem: VirtualFileSystem
 ) : InstantExecution {
 
     interface Host {
@@ -109,12 +107,6 @@ class DefaultInstantExecution internal constructor(
             false
         }
         else -> {
-
-            // TODO - should load properties from settings file directory
-            gradlePropertiesController.loadGradlePropertiesFrom(
-                startParameter.rootDirectory
-            )
-
             val fingerprintChangedReason = checkFingerprint()
             when {
                 fingerprintChangedReason != null -> {

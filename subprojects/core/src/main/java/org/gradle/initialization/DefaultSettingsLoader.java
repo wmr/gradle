@@ -36,25 +36,16 @@ public class DefaultSettingsLoader implements SettingsLoader {
     public static final String BUILD_SRC_PROJECT_PATH = ":" + SettingsInternal.BUILD_SRC;
     private SettingsProcessor settingsProcessor;
     private final BuildLayoutFactory buildLayoutFactory;
-    private final GradlePropertiesController gradlePropertiesController;
 
-    public DefaultSettingsLoader(
-        SettingsProcessor settingsProcessor,
-        BuildLayoutFactory buildLayoutFactory,
-        GradlePropertiesController gradlePropertiesController
-    ) {
+    public DefaultSettingsLoader(SettingsProcessor settingsProcessor, BuildLayoutFactory buildLayoutFactory) {
         this.settingsProcessor = settingsProcessor;
         this.buildLayoutFactory = buildLayoutFactory;
-        this.gradlePropertiesController = gradlePropertiesController;
     }
 
     @Override
     public SettingsInternal findAndLoadSettings(GradleInternal gradle) {
         StartParameter startParameter = gradle.getStartParameter();
-
         SettingsLocation settingsLocation = buildLayoutFactory.getLayoutFor(new BuildLayoutConfiguration(startParameter));
-        loadGradlePropertiesFrom(settingsLocation);
-
         SettingsInternal settings = findSettingsAndLoadIfAppropriate(gradle, startParameter, settingsLocation, gradle.getClassLoaderScope());
         ProjectSpec spec = ProjectSpecs.forStartParameter(startParameter, settings);
         if (useEmptySettings(spec, settings, startParameter)) {
@@ -63,12 +54,6 @@ public class DefaultSettingsLoader implements SettingsLoader {
 
         setDefaultProject(spec, settings);
         return settings;
-    }
-
-    private void loadGradlePropertiesFrom(SettingsLocation settingsLocation) {
-        gradlePropertiesController.loadGradlePropertiesFrom(
-            settingsLocation.getSettingsDir()
-        );
     }
 
     private boolean useEmptySettings(ProjectSpec spec, SettingsInternal loadedSettings, StartParameter startParameter) {
