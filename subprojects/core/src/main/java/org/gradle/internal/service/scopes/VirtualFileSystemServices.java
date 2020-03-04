@@ -225,9 +225,7 @@ public class VirtualFileSystemServices extends AbstractPluginServiceRegistry {
                     Map<String, String> systemPropertiesArgs = startParameter.getSystemPropertiesArgs();
                     if (isRetentionEnabled(systemPropertiesArgs)) {
                         IncubationLogger.incubatingFeatureUsed("Virtual file system retention");
-                        FileResolver fileResolver = new BaseDirFileResolver(startParameter.getCurrentDir(), () -> {
-                            throw new UnsupportedOperationException();
-                        });
+                        FileResolver fileResolver = new BaseDirFileResolver(startParameter.getCurrentDir());
                         if (isSystemPropertyEnabled(VFS_DROP_PROPERTY, systemPropertiesArgs)) {
                             virtualFileSystem.invalidateAll();
                         } else {
