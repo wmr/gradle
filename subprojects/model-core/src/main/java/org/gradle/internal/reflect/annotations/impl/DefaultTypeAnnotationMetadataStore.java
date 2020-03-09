@@ -429,6 +429,7 @@ public class DefaultTypeAnnotationMetadataStore implements TypeAnnotationMetadat
     private static String simpleAnnotationNames(Stream<Class<? extends Annotation>> annotationTypes) {
         return annotationTypes
             .map(annotationType -> "@" + annotationType.getSimpleName())
+            .sorted()
             .collect(joining(", "));
     }
 
