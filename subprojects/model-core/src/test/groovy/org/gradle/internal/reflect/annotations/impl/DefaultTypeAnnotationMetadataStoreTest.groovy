@@ -141,7 +141,7 @@ class DefaultTypeAnnotationMetadataStoreTest extends Specification {
         assertProperties TypeWithConflictingFieldAndMethodAnnotation, [
             property: [(TYPE): Small],
         ], [
-            "Property 'property' has conflicting type annotations declared: @Small, @Large; assuming @Small."
+            "Property 'property' has conflicting type annotations declared: @Large, @Small; assuming @Small."
         ]
     }
 
@@ -294,7 +294,7 @@ class DefaultTypeAnnotationMetadataStoreTest extends Specification {
         @SuppressWarnings("unused")
         static class TypeWithIgnoredFieldAndGetterInput {
             @Ignored
-            private String ignoredByField;
+            private String ignoredByField
 
             @Small
             String getIgnoredByField() {
@@ -527,7 +527,7 @@ class DefaultTypeAnnotationMetadataStoreTest extends Specification {
             smallThenLarge: [(TYPE): Small]
         ], [
             "Property 'largeThenSmall' has conflicting type annotations declared: @Large, @Small; assuming @Large.",
-            "Property 'smallThenLarge' has conflicting type annotations declared: @Small, @Large; assuming @Small."
+            "Property 'smallThenLarge' has conflicting type annotations declared: @Large, @Small; assuming @Small."
         ]
     }
 
