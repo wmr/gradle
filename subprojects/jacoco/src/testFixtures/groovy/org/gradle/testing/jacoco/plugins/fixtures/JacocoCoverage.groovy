@@ -23,7 +23,7 @@ final class JacocoCoverage {
 
     private JacocoCoverage() {}
 
-    private static final String[] ALL = [JacocoPlugin.DEFAULT_JACOCO_VERSION, '0.7.1.201405082137', '0.7.6.201602180812', '0.8.3'].asImmutable()
+    private static final String[] ALL = ['0.7.1.201405082137', '0.7.6.201602180812'].asImmutable()
 
     static List<String> getSupportedVersionsByJdk() {
         if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_14)) {
