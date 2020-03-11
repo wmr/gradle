@@ -44,6 +44,7 @@ public class MinimalJavaCompileOptions implements Serializable {
     private boolean warnings;
     private File annotationProcessorGeneratedSourcesDirectory;
     private File headerOutputDirectory;
+    private File incrementalCompilationMappingFile;
 
     public MinimalJavaCompileOptions(final CompileOptions compileOptions) {
         FileCollection sourcepath = compileOptions.getSourcepath();
@@ -85,11 +86,12 @@ public class MinimalJavaCompileOptions implements Serializable {
         this.compilerArgs = compilerArgs;
     }
 
+    @Nullable
     public String getEncoding() {
         return encoding;
     }
 
-    public void setEncoding(String encoding) {
+    public void setEncoding(@Nullable String encoding) {
         this.encoding = encoding;
     }
 
@@ -188,5 +190,14 @@ public class MinimalJavaCompileOptions implements Serializable {
 
     public void setHeaderOutputDirectory(@Nullable File headerOutputDirectory) {
         this.headerOutputDirectory = headerOutputDirectory;
+    }
+
+    @Nullable
+    public File getIncrementalCompilationMappingFile() {
+        return incrementalCompilationMappingFile;
+    }
+
+    public void setIncrementalCompilationMappingFile(@Nullable File incrementalCompilationMappingFile) {
+        this.incrementalCompilationMappingFile = incrementalCompilationMappingFile;
     }
 }
