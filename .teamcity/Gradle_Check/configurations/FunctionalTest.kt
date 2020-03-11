@@ -28,7 +28,7 @@ class FunctionalTest(
     val testTasks = if (subprojects.isEmpty())
         testTaskName
     else
-        subprojects.joinToString(" ") { "$it:$testTaskName" }
+        subprojects.joinToString(" ") { "$it:$testTaskName${if (testCoverage.os == Os.windows) " --rerun" else ""}" }
     val quickTest = testCoverage.testType == TestType.quick
     val buildScanTags = listOf("FunctionalTest")
     val buildScanValues = mapOf(
