@@ -43,6 +43,7 @@ import org.gradle.instantexecution.serialization.ReadContext
 import org.gradle.instantexecution.serialization.WriteContext
 import org.gradle.instantexecution.serialization.decodePreservingSharedIdentity
 import org.gradle.instantexecution.serialization.encodePreservingSharedIdentityOf
+import org.gradle.instantexecution.serialization.logPropertyWarning
 import org.gradle.instantexecution.serialization.readList
 import org.gradle.instantexecution.serialization.writeCollection
 
@@ -85,10 +86,15 @@ class FixedValueReplacingProviderCodec(valueSourceProviderFactory: ValueSourcePr
 
 
 private
-fun unpack(value: Provider<*>): Any? =
+fun WriteContext.unpack(value: Provider<*>): Any? =
     try {
         value.orNull
     } catch (e: Exception) {
+        logPropertyWarning("serialize", e) {
+            text("value ")
+            reference(value.toString())
+            text(" failed to unpack provider")
+        }
         BrokenValue(e)
     }
 
