@@ -53,6 +53,9 @@ class AbstractInstantExecutionIntegrationTest extends AbstractIntegrationSpec {
 
     public static final String INSTANT_EXECUTION_PROPERTY = "-Dorg.gradle.unsafe.instant-execution=true"
 
+    protected static final String PROBLEMS_REPORT_HTML_FILE_NAME = "instant-execution-report.html"
+    protected static final String PROBLEMS_REPORT_JS_FILE_NAME = "instant-execution-report-data.js"
+
     protected InstantExecutionBuildOperationsFixture newInstantExecutionFixture() {
         return new InstantExecutionBuildOperationsFixture(new BuildOperationsFixture(executer, temporaryFolder))
     }
@@ -119,8 +122,8 @@ class AbstractInstantExecutionIntegrationTest extends AbstractIntegrationSpec {
         if (expectReport) {
             assertThat("HTML report URI not found", reportDir, notNullValue())
             assertTrue("HTML report directory not found '$reportDir'", reportDir.isDirectory())
-            def htmlFile = reportDir.file('instant-execution-report.html')
-            def jsFile = reportDir.file('instant-execution-report-data.js')
+            def htmlFile = reportDir.file(PROBLEMS_REPORT_HTML_FILE_NAME)
+            def jsFile = reportDir.file(PROBLEMS_REPORT_JS_FILE_NAME)
             assertTrue("HTML report HTML file not found in '$reportDir'", htmlFile.isFile())
             assertTrue("HTML report JS model not found in '$reportDir'", jsFile.isFile())
             assertThat(
@@ -136,7 +139,7 @@ class AbstractInstantExecutionIntegrationTest extends AbstractIntegrationSpec {
     @Nullable
     protected TestFile resolveInstantExecutionReportDirectory() {
         def baseDirUri = clickableUrlFor(new File(executer.workingDir, "build/reports/instant-execution"))
-        def pattern = Pattern.compile("See the complete report at (${baseDirUri}.*)instant-execution-report.html")
+        def pattern = Pattern.compile("See the complete report at (${baseDirUri}.*)$PROBLEMS_REPORT_HTML_FILE_NAME")
         def reportDirUri = resultOrFailureOutput().readLines().findResult { line ->
             def matcher = pattern.matcher(line)
             matcher.matches() ? matcher.group(1) : null

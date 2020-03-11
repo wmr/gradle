@@ -54,7 +54,7 @@ class InstantExecutionReportIntegrationTest extends AbstractInstantExecutionInte
         and:
         expectInstantExecutionProblems(*expectedProblems)
         numberOfProblemsWithStacktraceIn(
-            resolveInstantExecutionReportDirectory().file("instant-execution-report-data.js")
+            resolveInstantExecutionReportDirectory().file(PROBLEMS_REPORT_JS_FILE_NAME)
         ) == 2
 
         when:
@@ -67,7 +67,7 @@ class InstantExecutionReportIntegrationTest extends AbstractInstantExecutionInte
         and:
         expectInstantExecutionProblems(*expectedProblems)
         numberOfProblemsWithStacktraceIn(
-            resolveInstantExecutionReportDirectory().file("instant-execution-report-data.js")
+            resolveInstantExecutionReportDirectory().file(PROBLEMS_REPORT_JS_FILE_NAME)
         ) == 2
 
 
@@ -81,7 +81,7 @@ class InstantExecutionReportIntegrationTest extends AbstractInstantExecutionInte
         and:
         expectInstantExecutionProblems(*expectedProblems)
         numberOfProblemsWithStacktraceIn(
-            resolveInstantExecutionReportDirectory().file("instant-execution-report-data.js")
+            resolveInstantExecutionReportDirectory().file(PROBLEMS_REPORT_JS_FILE_NAME)
         ) == 2
     }
 
