@@ -664,7 +664,16 @@ class InstantExecutionIntegrationTest extends AbstractInstantExecutionIntegratio
         """
 
         when:
+        withDoNotFailOnProblems()
         instantFails "broken"
+
+        then:
+        instantExecution.assertStateStored()
+        expectInstantExecutionProblems("- field 'value' from type 'SomeTask': $problem")
+        numberOfProblemsWithStacktraceIn(resolveInstantExecutionReportDirectory().file(PROBLEMS_REPORT_JS_FILE_NAME)) == 1
+
+        when:
+        withFailOnProblems()
         instantFails "broken"
 
         then:
@@ -674,9 +683,9 @@ class InstantExecutionIntegrationTest extends AbstractInstantExecutionIntegratio
         failure.assertHasCause("broken!")
 
         where:
-        type               | reference                    | query
-        "Provider<String>" | "project.providers.provider" | "get()"
-        "FileCollection"   | "project.files"              | "files"
+        type               | reference                    | query   | problem
+        "Provider<String>" | "project.providers.provider" | "get()" | "value 'provider(?)' failed to unpack provider"
+        "FileCollection"   | "project.files"              | "files" | "value 'file collection' failed to visit file collection"
     }
 
     @Unroll
