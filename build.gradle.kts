@@ -64,7 +64,7 @@ buildTypes {
 
     // Used by the first phase of the build pipeline, running only last version on multiversion - tests
     create("quickTest") {
-        tasks("test", "integTest", "crossVersionTest")
+        tasks("integTest")
     }
 
     // Used for builds to run all tests
