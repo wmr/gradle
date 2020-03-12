@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package org.gradle.scala
+
+import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
 import org.gradle.integtests.fixtures.ZincScalaCompileFixture
 import org.gradle.integtests.fixtures.MultiVersionIntegrationSpec
 import org.gradle.integtests.fixtures.TargetCoverage
@@ -86,6 +88,7 @@ task verify {
         succeeds("verify")
     }
 
+    @ToBeFixedForInstantExecution(because = "gradle/instant-execution#270")
     def "not specifying a scala runtime produces decent error message"() {
         given:
         buildFile << """
