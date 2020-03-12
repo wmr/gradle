@@ -41,7 +41,7 @@ import static org.gradle.internal.FileUtils.hasExtension;
 public class JavaRecompilationSpecProvider extends AbstractRecompilationSpecProvider {
     private final boolean incremental;
     private final Iterable<FileChange> sourceChanges;
-    private final DefaultSourceFileClassNameConverter sourceFileClassNameConverter;
+    private final SourceFileClassNameConverter sourceFileClassNameConverter;
 
     public JavaRecompilationSpecProvider(
         Deleter deleter,
@@ -49,7 +49,7 @@ public class JavaRecompilationSpecProvider extends AbstractRecompilationSpecProv
         FileTree sourceTree,
         boolean incremental,
         Iterable<FileChange> sourceFileChanges,
-        DefaultSourceFileClassNameConverter sourceFileClassNameConverter) {
+        SourceFileClassNameConverter sourceFileClassNameConverter) {
         super(deleter, fileOperations, sourceTree);
         this.incremental = incremental;
         this.sourceChanges = sourceFileChanges;
