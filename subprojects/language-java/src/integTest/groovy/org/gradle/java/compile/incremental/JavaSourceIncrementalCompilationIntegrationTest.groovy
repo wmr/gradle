@@ -58,7 +58,7 @@ class JavaSourceIncrementalCompilationIntegrationTest extends BaseJavaSourceIncr
         fails language.compileTaskName
         result.assertHasErrorOutput("package java.util.logging is not visible")
     }
-    
+
     @Issue("https://github.com/gradle/gradle/issues/7363")
     def "can recompile classes which depend on a top-level class with a different name than the file"() {
         file("src/main/java/foo/Strings.java") << """
